@@ -18,7 +18,7 @@ public abstract class DataFixture : IDisposable
     protected void Initialize()
     {
         Clear();
-        var (pool, data) = Corpus.Generate(30000, 8, 32, 16, 1024, 123123123);
+        var (pool, data) = Corpus.Generate(10000, 8, 32, 16, 1024, 123123123);
         keys = [.. data.Keys];
         var r = new Random();
         values = [.. data.Values.OrderBy(_ => r.Next())];
