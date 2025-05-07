@@ -11,10 +11,7 @@ public sealed partial class KeyValueStore : IEnumerable<KeyValuePair<Mem, Mem>>,
     private long sequence;
     private readonly SpinLock spinLock = new();
     private readonly UnsafeMemoryPool pool = new();
-    private readonly List<(long sequence, ImmutableSortedDictionary<Mem, Mem> store)> pastStores = [];
     private ImmutableSortedDictionary<Mem, Mem> store = ImmutableSortedDictionary<Mem, Mem>.Empty;
-
-    public event Action<(long Sequence, ChangeOperation[] Operations)>? OnChange;
 
     private KeyValueStore()
     {
@@ -27,13 +24,13 @@ public sealed partial class KeyValueStore : IEnumerable<KeyValuePair<Mem, Mem>>,
         var m = new KeyValueStore();
 
         var b = m.store.ToBuilder();
+
         foreach (var kvp in source)
         {
             b.Add(m.pool.Allocate(kvp.Key), m.pool.Allocate(kvp.Value));
         }
 
         m.store = b.ToImmutable();
-        m.pastStores.Add((1, m.store));
         m.sequence = 1;
         return m;
     }
@@ -49,33 +46,10 @@ public sealed partial class KeyValueStore : IEnumerable<KeyValuePair<Mem, Mem>>,
         }
     }
 
-    public void Prune(int numGenerationsToKeep)
-    {
-        bool taken = false;
-        while (!taken)
-        {
-            spinLock.Enter(ref taken);
-        }
-
-        try
-        {
-            if (pastStores.Count >= numGenerationsToKeep)
-            {
-                return;
-            }
-
-            pastStores.RemoveRange(0, pastStores.Count - numGenerationsToKeep);
-        }
-        finally
-        {
-            spinLock.Exit();
-        }
-    }
-
     public unsafe long Apply(ChangeOperation[] operations)
     {
-        Span<Mem> newValues = new Mem[operations.Length];
-        Span<Mem> newKeys = new Mem[operations.Length];
+        Span<Mem> newValues;
+        Span<Mem> newKeys;
         if (operations.Length > 1024)
         {
             newValues = new Mem[operations.Length];
@@ -144,7 +118,7 @@ public sealed partial class KeyValueStore : IEnumerable<KeyValuePair<Mem, Mem>>,
             var newSequence = TryMerge(s, b.ToImmutable());
             if (newSequence != 0)
             {
-                OnChange?.Invoke((newSequence, operations));
+                //OnChange?.Invoke((newSequence, operations));
                 return newSequence;
             }
         }
@@ -167,13 +141,37 @@ public sealed partial class KeyValueStore : IEnumerable<KeyValuePair<Mem, Mem>>,
                 return 0;
             }
 
-            var newSequence = ++sequence;
-            pastStores.Add((newSequence, newStore));
-            return newSequence;
+            return ++sequence;
         }
         finally
         {
             spinLock.Exit();
+        }
+    }
+
+    internal (long sequence, ImmutableSortedDictionary<Mem, Mem> store) Snapshot()
+    {
+        ForceTakeSpinlock();
+
+        var _store = store;
+        var _sequence = sequence;
+        spinLock.Exit();
+
+        return (_sequence, _store);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ForceTakeSpinlock()
+    {
+        for (; ; )
+        {
+            bool taken = false;
+            spinLock.Enter(ref taken);
+            if (taken)
+            {
+                break;
+            }
+            Thread.Yield();
         }
     }
 
