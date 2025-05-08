@@ -237,6 +237,9 @@ namespace KeysAndValues
         {
             return new DictionaryEnumerator(GetEnumerator());
         }
+
+        public ReverseEnumerable AsReversed() => new(this);
+
         void IDictionary.Remove(object key) => throw new NotSupportedException();
         object? IDictionary.this[object key]
         {
@@ -270,6 +273,8 @@ namespace KeysAndValues
         {
             return root.GetEnumerator();
         }
+
+        public Enumerator GetReverseEnumerator() => new(root, reverse: true);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ImmutableAvlTree<TKey, TValue> Wrap(Node root, int count)
@@ -842,26 +847,29 @@ namespace KeysAndValues
 
             private Node root;
             private Node? current;
-            private Node[]? stack;
+            private Node[] stack;
             private int stackIndex;
 
-            internal Enumerator(Node root, Builder? builder = null)
+            private readonly bool reverse;
+            private Node? start;
+            private Node? end;
+
+            internal Enumerator(Node root,
+                Builder? builder = null,
+                bool reverse = false,
+                Node? start = null,
+                Node? end = null)
             {
                 Debug.Assert(root is not null);
 
                 this.builder = builder;
-                version = builder?.Version ?? -1;
-
                 this.root = root;
-                current = null;
-                stack = null;
-                stackIndex = -1;
+                this.reverse = reverse;
+                this.start = start;
+                this.end = end;
+                this.stack = !root.IsEmpty ? ArrayPool<Node>.Shared.Rent(root.Height) : [];
 
-                if (!root.IsEmpty)
-                {
-                    stack = ArrayPool<Node>.Shared.Rent(root.Height);
-                    PushLeft(root);
-                }
+                Reset();
             }
 
             public readonly KeyValuePair<TKey, TValue> Current
@@ -884,7 +892,7 @@ namespace KeysAndValues
                 {
                     ArrayPool<Node>.Shared.Return(stack);
                 }
-                stack = null;
+                stack = null!;
             }
 
             public bool MoveNext()
@@ -903,19 +911,37 @@ namespace KeysAndValues
 
                 var n = stack[stackIndex--];
                 current = n;
-                PushLeft(n.Right!);
+                if (reverse)
+                {
+                    PushRight(n.Left!);
+                }
+                else
+                {
+                    PushLeft(n.Right!);
+                }
+
                 return true;
             }
 
             public void Reset()
             {
                 ObjectDisposedException.ThrowIf(root is null, this);
+                Debug.Assert(stack is not null);
 
                 current = null;
                 version = builder?.Version ?? -1;
                 stackIndex = -1;
 
-                if (!root.IsEmpty)
+                if (root.IsEmpty)
+                {
+                    return;
+                }
+
+                if (reverse)
+                {
+                    PushRight(root);
+                }
+                else
                 {
                     PushLeft(root);
                 }
@@ -938,17 +964,23 @@ namespace KeysAndValues
                 }
             }
 
-            void IEnumerator.Reset()
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private void PushRight(Node node)
             {
-                ObjectDisposedException.ThrowIf(root is null, this);
+                Debug.Assert(node is not null);
+                Debug.Assert(stack is not null);
+                Debug.Assert(stackIndex < stack.Length - 1);
 
-                current = null;
-                if (stack is not null)
+                // Push the node and all its rights onto the stack
+                while (!node.IsEmpty)
                 {
-                    stackIndex = -1;
-                    PushLeft(root);
+                    stack[++stackIndex] = node;
+                    node = node.Right!;
+                    Debug.Assert(node is not null);
                 }
             }
+
+            void IEnumerator.Reset() => Reset();
         }
 
         internal sealed class DictionaryEnumerator : IDictionaryEnumerator
@@ -1292,6 +1324,13 @@ namespace KeysAndValues
                 // will clone (and unfreeze) the spine of modified nodes until the next time this method is invoked.
                 return immutable ??= new(root, count);
             }
+        }
+
+        public readonly struct ReverseEnumerable(ImmutableAvlTree<TKey, TValue> instance, Node? start = null, Node? end = null) : IEnumerable<KeyValuePair<TKey, TValue>>
+        {
+            public readonly IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => new Enumerator(instance.root, null, true, start, end);
+
+            readonly IEnumerator IEnumerable.GetEnumerator() => new Enumerator(instance.root, reverse: true);
         }
     }
 

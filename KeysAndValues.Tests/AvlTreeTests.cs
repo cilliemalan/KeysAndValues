@@ -115,7 +115,7 @@ public class AvlTreeTests : AvlTreeTestsBase
     [Fact]
     public void AddExistingKeyDifferentValueTest()
     {
-        AddExistingKeyDifferentValueTestHelper(NewEmpty<string,string>(), "Company", "Microsoft", "MICROSOFT");
+        AddExistingKeyDifferentValueTestHelper(NewEmpty<string, string>(), "Company", "Microsoft", "MICROSOFT");
     }
 
     [Fact]
@@ -318,29 +318,106 @@ public class AvlTreeTests : AvlTreeTestsBase
     [InlineData(1025)]
     public void EnumerationTests(int numEntries)
     {
-        var s = Empty<string, string>().AddRange(Enumerable.Range(0, numEntries).Select(x => new KeyValuePair<string, string>(x.ToString(), x.ToString())));
+        var s = Empty<string, string>()
+            .AddRange(Enumerable.Range(0, numEntries)
+            .Select(x => new KeyValuePair<string, string>(
+                x.ToString("0000"),
+                x.ToString())));
 
         Assert.Equal(numEntries, s.Count());
         Assert.Equal(numEntries, s.DistinctBy(x => x.Key).Count());
 
         using var en = s.GetEnumerator();
         int cnt = 0;
+        string? prev = null;
         while (en.MoveNext())
         {
+            Assert.True(prev is null || en.Current.Key.CompareTo(prev) >= 0, "Keys are not sorted");
+
             cnt++;
+            prev = en.Current.Key;
         }
         Assert.Equal(numEntries, cnt);
 
         en.Reset();
         cnt = 0;
+        prev = null;
         while (en.MoveNext())
         {
+            Assert.True(prev is null || en.Current.Key.CompareTo(prev) >= 0, "Keys are not sorted");
             cnt++;
+            prev = en.Current.Key;
         }
         Assert.Equal(numEntries, cnt);
 
         var d = (IDictionary)s;
         Assert.Equal(numEntries, d.Cast<DictionaryEntry>().Count());
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(10)]
+    [InlineData(15)]
+    [InlineData(16)]
+    [InlineData(17)]
+    [InlineData(31)]
+    [InlineData(32)]
+    [InlineData(33)]
+    [InlineData(127)]
+    [InlineData(128)]
+    [InlineData(129)]
+    [InlineData(1023)]
+    [InlineData(1024)]
+    [InlineData(1025)]
+    public void ReverseEnumerationTests(int numEntries)
+    {
+        var s = ImmutableAvlTree<string,string>.Empty
+            .AddRange(Enumerable.Range(0, numEntries)
+            .Select(x => new KeyValuePair<string, string>(
+                x.ToString("0000"),
+                x.ToString())));
+
+        Assert.Equal(numEntries, s.Count());
+        Assert.Equal(numEntries, s.DistinctBy(x => x.Key).Count());
+
+        using var en = s.AsReversed().GetEnumerator();
+        int cnt = 0;
+        string? prev = null;
+        while (en.MoveNext())
+        {
+            Assert.True(prev is null || en.Current.Key.CompareTo(prev) <= 0, "Keys are not sorted");
+
+            cnt++;
+            prev = en.Current.Key;
+        }
+        Assert.Equal(numEntries, cnt);
+
+        en.Reset();
+        cnt = 0;
+        prev = null;
+        while (en.MoveNext())
+        {
+            Assert.True(prev is null || en.Current.Key.CompareTo(prev) <= 0, "Keys are not sorted");
+            cnt++;
+            prev = en.Current.Key;
+        }
+        Assert.Equal(numEntries, cnt);
+
+        var d = (IDictionary)s;
+        Assert.Equal(numEntries, d.Cast<DictionaryEntry>().Count());
+    }
+
+    [Fact]
+    public void ReverseEnumeration()
+    {
+        var dictionary = new Dictionary<string, int>()
+            {
+                { "a", 1 },
+                { "b", 2 },
+                { "c", 3 },
+                { "d", 4 }
+            }.ToImmutableAvlTree();
     }
 
     protected override IImmutableDictionary<TKey, TValue> Empty<TKey, TValue>()
