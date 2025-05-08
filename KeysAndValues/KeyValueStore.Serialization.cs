@@ -24,9 +24,9 @@ public partial class KeyValueStore
         for (var i = 0; i < count; i++)
         {
             var keyLength = reader.ReadInt32();
-            var key = m.pool.Allocate(keyLength, r => reader.Read(r));
+            var key = new Mem(reader.ReadBytes(keyLength));
             var valueLength = reader.ReadInt32();
-            var value = m.pool.Allocate(valueLength, r => reader.Read(r));
+            var value = new Mem(reader.ReadBytes(valueLength));
             store.Add(key, value);
         }
         m.store = store.ToImmutable();
@@ -38,7 +38,7 @@ public partial class KeyValueStore
         using var gz = new GZipStream(stream, CompressionLevel.Optimal);
         using var writer = new BinaryWriter(gz);
 
-        var (sequence, store) = Snapshot();
+        var clone = Snapshot();
 
         writer.Write(MAGIC);
         writer.Write(sequence);
