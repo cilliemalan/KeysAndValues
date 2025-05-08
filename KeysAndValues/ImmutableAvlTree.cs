@@ -1,5 +1,6 @@
 ﻿
 using KeysAndValues;
+using System;
 using System.Buffers;
 using System.Collections;
 using System.Collections.Immutable;
@@ -413,6 +414,7 @@ namespace KeysAndValues
             public IEnumerable<TValue> Values => this.Select(x => x.Value);
 
             public Enumerator GetEnumerator() => new(this);
+            public Enumerator GetEnumerator(Builder builder) => new(this, builder);
             System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => new Enumerator(this);
             IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => new Enumerator(this);
             //public Enumerator GetEnumerator(Builder) => new(this);
@@ -428,11 +430,20 @@ namespace KeysAndValues
                 }
             }
 
-            internal void CopyTo(Span<KeyValuePair<TKey, TValue>> dest, int index, int dictionarySize)
+            internal void CopyTo(KeyValuePair<TKey, TValue>[] dest, int index, int dictionarySize)
             {
                 ArgumentOutOfRangeException.ThrowIfNegative(index, nameof(index));
                 ArgumentOutOfRangeException.ThrowIfGreaterThan(dest.Length, index + dictionarySize, nameof(index));
 
+                foreach (var item in this)
+                {
+                    dest[index++] = item;
+                }
+            }
+
+            internal void CopyTo(Span<KeyValuePair<TKey, TValue>> dest)
+            {
+                int index = 0;
                 foreach (var item in this)
                 {
                     dest[index++] = item;
@@ -1042,6 +1053,239 @@ namespace KeysAndValues
                 }
 
                 throw new NotSupportedException();
+            }
+        }
+
+
+        [DebuggerDisplay("Count = {Count}")]
+        [DebuggerTypeProxy("System.Collections.Generic.IDictionaryDebugView<,>")]
+        public sealed class Builder : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary
+        {
+            private Node root = Node.EmptyNode;
+            private int count;
+            private ImmutableAvlTree<TKey, TValue>? immutable;
+            private int version;
+            private object? syncRoot;
+
+            internal Builder(ImmutableAvlTree<TKey, TValue> map)
+            {
+                ArgumentNullException.ThrowIfNull(map, nameof(map));
+                root = map.root;
+                count = map.count;
+                immutable = map;
+            }
+
+            ICollection<TKey> IDictionary<TKey, TValue>.Keys => [.. root.Keys];
+            public IEnumerable<TKey> Keys => root.Keys;
+            ICollection<TValue> IDictionary<TKey, TValue>.Values => [.. root.Values];
+            public IEnumerable<TValue> Values => root.Values;
+            public int Count => count;
+            bool ICollection<KeyValuePair<TKey, TValue>>.IsReadOnly => false;
+
+            internal int Version => version;
+
+            private Node Root
+            {
+                get
+                {
+                    return root;
+                }
+
+                set
+                {
+                    // We *always* increment the version number because some mutations
+                    // may not create a new value of root, although the existing root
+                    // instance may have mutated.
+                    version++;
+
+                    if (root != value)
+                    {
+                        root = value;
+
+                        // Clear any cached value for the immutable view since it is now invalidated.
+                        immutable = null;
+                    }
+                }
+            }
+
+            public TValue this[TKey key]
+            {
+                get
+                {
+                    TValue value;
+                    if (!TryGetValue(key, out value!))
+                    {
+                        throw new KeyNotFoundException($"The key '{key}' was not found");
+                    }
+
+                    return value;
+                }
+
+                set
+                {
+                    Root = root.SetItem(key, value, out bool replacedExistingValue, out bool mutated);
+                    if (mutated && !replacedExistingValue)
+                    {
+                        count++;
+                    }
+                }
+            }
+
+            public ref readonly TValue ValueRef(TKey key)
+            {
+                ArgumentNullException.ThrowIfNull(key);
+                return ref root.ValueRef(key);
+            }
+            bool IDictionary.IsFixedSize => false;
+            bool IDictionary.IsReadOnly => false;
+            ICollection IDictionary.Keys => Keys.ToArray();
+            ICollection IDictionary.Values => Values.ToArray();
+
+            [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+            object ICollection.SyncRoot
+            {
+                get
+                {
+                    if (syncRoot == null)
+                    {
+                        Interlocked.CompareExchange<object?>(ref syncRoot, new object(), null);
+                    }
+
+                    return syncRoot;
+                }
+            }
+
+            [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+            bool ICollection.IsSynchronized => false;
+
+            public IComparer<TKey> KeyComparer
+            {
+                get => Comparer<TKey>.Default;
+                set => throw new NotSupportedException();
+            }
+
+            public IEqualityComparer<TValue> ValueComparer
+            {
+                get => EqualityComparer<TValue>.Default;
+                set => throw new NotSupportedException();
+            }
+
+            void IDictionary.Add(object key, object? value) => Add((TKey)key, (TValue)value!);
+            bool IDictionary.Contains(object key) => ContainsKey((TKey)key);
+            IDictionaryEnumerator IDictionary.GetEnumerator() => new DictionaryEnumerator(GetEnumerator());
+            void IDictionary.Remove(object key) => Remove((TKey)key);
+            object? IDictionary.this[object key]
+            {
+                get { return this[(TKey)key]; }
+                set { this[(TKey)key] = (TValue)value!; }
+            }
+            void ICollection.CopyTo(Array array, int index) => Root.CopyTo(array, index, Count);
+
+            public void Add(TKey key, TValue value)
+            {
+                Root = Root.Add(key, value, out bool mutated);
+                if (mutated)
+                {
+                    count++;
+                }
+            }
+
+            public bool ContainsKey(TKey key) => Root.ContainsKey(key);
+
+            public bool Remove(TKey key)
+            {
+                Root = Root.Remove(key, out var mutated);
+                if (mutated)
+                {
+                    count--;
+                }
+
+                return mutated;
+            }
+
+            public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value) => Root.TryGetValue(key, out value!);
+
+            public bool TryGetKey(TKey equalKey, out TKey actualKey)
+            {
+                ArgumentNullException.ThrowIfNull(equalKey, nameof(equalKey));
+                return this.Root.TryGetKey(equalKey, out actualKey);
+            }
+
+            public void Add(KeyValuePair<TKey, TValue> item) => Add(item.Key, item.Value);
+
+            public void Clear()
+            {
+                Root = Node.EmptyNode;
+                count = 0;
+            }
+
+            public bool Contains(KeyValuePair<TKey, TValue> item) => Root.Contains(item);
+
+            void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
+            {
+                Root.CopyTo(array, arrayIndex, Count);
+            }
+
+            public bool Remove(KeyValuePair<TKey, TValue> item)
+            {
+                if (Contains(item))
+                {
+                    return Remove(item.Key);
+                }
+
+                return false;
+            }
+
+            public Enumerator GetEnumerator() => Root.GetEnumerator(this);
+
+            IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => GetEnumerator();
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+            public bool ContainsValue(TValue value) => root.ContainsValue(value);
+
+            public void AddRange(IEnumerable<KeyValuePair<TKey, TValue>> items)
+            {
+                ArgumentNullException.ThrowIfNull(items);
+
+                foreach (KeyValuePair<TKey, TValue> pair in items)
+                {
+                    Add(pair);
+                }
+            }
+
+            public void RemoveRange(IEnumerable<TKey> keys)
+            {
+                ArgumentNullException.ThrowIfNull(keys);
+
+                foreach (TKey key in keys)
+                {
+                    Remove(key);
+                }
+            }
+            public TValue? GetValueOrDefault(TKey key)
+            {
+                return this.GetValueOrDefault(key, default(TValue)!);
+            }
+
+            public TValue GetValueOrDefault(TKey key, TValue defaultValue)
+            {
+                ArgumentNullException.ThrowIfNull(key, nameof(key));
+
+                TValue value;
+                if (TryGetValue(key, out value!))
+                {
+                    return value;
+                }
+
+                return defaultValue;
+            }
+
+            public ImmutableAvlTree<TKey, TValue> ToImmutable()
+            {
+                // Creating an instance of ImmutableSortedMap<T> with our root node automatically freezes our tree,
+                // ensuring that the returned instance is immutable.  Any further mutations made to this builder
+                // will clone (and unfreeze) the spine of modified nodes until the next time this method is invoked.
+                return immutable ??= new(root, count);
             }
         }
     }
