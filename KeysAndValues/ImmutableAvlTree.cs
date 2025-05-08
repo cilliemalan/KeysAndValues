@@ -238,7 +238,19 @@ namespace KeysAndValues
             return new DictionaryEnumerator(GetEnumerator());
         }
 
-        public ReverseEnumerable Reversed() => new(this);
+        public Enumerable Reversed() => new(this, true);
+        public Enumerable Reversed(TKey start) => new(this, true, start);
+        public Enumerable Reversed(TKey start, TKey end)
+        {
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(end, start);
+            return new(this, true, start, end);
+        }
+        public Enumerable Range(TKey start) => new(this, false, start);
+        public Enumerable Range(TKey start, TKey end)
+        {
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(start, end);
+            return new(this, false, start, end);
+        }
 
         void IDictionary.Remove(object key) => throw new NotSupportedException();
         object? IDictionary.this[object key]
@@ -261,7 +273,7 @@ namespace KeysAndValues
 
         IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
         {
-            return IsEmpty ? Enumerable.Empty<KeyValuePair<TKey, TValue>>().GetEnumerator() : this.GetEnumerator();
+            return IsEmpty ? System.Linq.Enumerable.Empty<KeyValuePair<TKey, TValue>>().GetEnumerator() : this.GetEnumerator();
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
@@ -837,6 +849,17 @@ namespace KeysAndValues
                     return left.Search(key);
                 }
             }
+
+            public override string ToString()
+            {
+                var s = $"{key} : {value}";
+                if (IsEmpty)
+                {
+                    s += " #";
+                }
+
+                return s;
+            }
         }
 
         public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
@@ -851,16 +874,18 @@ namespace KeysAndValues
             private int stackIndex;
 
             private readonly bool reverse;
-            private Node? start;
-            private Node? end;
+            private readonly TKey? start;
+            private readonly TKey? end;
 
             internal Enumerator(Node root,
                 Builder? builder = null,
                 bool reverse = false,
-                Node? start = null,
-                Node? end = null)
+                TKey? start = default,
+                TKey? end = default)
             {
                 Debug.Assert(root is not null);
+                Debug.Assert(reverse || end is null || (start is not null && start.CompareTo(end) <= 0));
+                Debug.Assert(!reverse || end is null || (start is not null && start.CompareTo(end) >= 0));
 
                 this.builder = builder;
                 this.root = root;
@@ -920,6 +945,17 @@ namespace KeysAndValues
                     PushLeft(n.Right!);
                 }
 
+                if (end is not null)
+                {
+                    var comparison = current.Value.Key.CompareTo(end);
+                    if ((reverse && comparison <= 0) || (!reverse && comparison >= 0))
+                    {
+                        stackIndex = -1;
+                        current = null;
+                        return false;
+                    }
+                }
+
                 return true;
             }
 
@@ -937,13 +973,58 @@ namespace KeysAndValues
                     return;
                 }
 
-                if (reverse)
+                if (start is null)
                 {
-                    PushRight(root);
+                    if (reverse)
+                    {
+                        PushRight(root);
+                    }
+                    else
+                    {
+                        PushLeft(root);
+                    }
                 }
                 else
                 {
-                    PushLeft(root);
+                    AdvanceTo(start);
+                }
+            }
+
+            private void AdvanceTo(TKey key)
+            {
+                var node = root!;
+                for (; ; )
+                {
+                    if (node.IsEmpty)
+                    {
+                        break;
+                    }
+
+                    int comparison = key.CompareTo(node.Value.Key);
+                    if (reverse) comparison = -comparison;
+
+                    if (comparison <= 0)
+                    {
+                        stack[++stackIndex] = node;
+                        node = node.Left!;
+                        Debug.Assert(node is not null);
+                        continue;
+                    }
+
+                    if (node.Right!.IsEmpty)
+                    {
+                        break;
+                    }
+
+                    comparison = key.CompareTo(node.Value.Key);
+                    if (reverse) comparison = -comparison;
+
+                    if (comparison < 0)
+                    {
+                        break;
+                    }
+
+                    node = node.Right!;
                 }
             }
 
@@ -1326,11 +1407,11 @@ namespace KeysAndValues
             }
         }
 
-        public readonly struct ReverseEnumerable(ImmutableAvlTree<TKey, TValue> instance, Node? start = null, Node? end = null) : IEnumerable<KeyValuePair<TKey, TValue>>
+        public readonly struct Enumerable(ImmutableAvlTree<TKey, TValue> instance, bool reversed, TKey? start = default, TKey? end = default) : IEnumerable<KeyValuePair<TKey, TValue>>
         {
-            public readonly IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => new Enumerator(instance.root, null, true, start, end);
+            public readonly IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => new Enumerator(instance.root, null, reversed, start, end);
 
-            readonly IEnumerator IEnumerable.GetEnumerator() => new Enumerator(instance.root, reverse: true);
+            readonly IEnumerator IEnumerable.GetEnumerator() => new Enumerator(instance.root, null, reversed, start, end);
         }
     }
 

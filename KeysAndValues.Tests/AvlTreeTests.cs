@@ -409,21 +409,37 @@ public class AvlTreeTests : AvlTreeTestsBase
     }
 
     [Fact]
-    public void ReverseEnumeration()
+    public void RangeEnumeration()
     {
         var dictionary = new Dictionary<string, int>()
             {
                 { "a", 1 },
                 { "b", 2 },
                 { "c", 3 },
-                { "d", 4 }
+                { "d", 4 },
+                { "e", 5 },
+                { "f", 6 },
+                { "g", 7 },
+                { "h", 8 },
+                { "i", 9 }
             }.ToImmutableAvlTree();
+
+        dictionary.Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["a", "b", "c", "d", "e", "f", "g", "h", "i"]);
+        dictionary.Range("a", "i").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["a", "b", "c", "d", "e", "f", "g", "h", "i"]);
+        dictionary.Range("c", "g").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["c", "d", "e", "f", "g"]);
+        dictionary.Range("a", "b").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["a", "b"]);
+        dictionary.Range("a", "a").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["a"]);
+        dictionary.Range("f", "i").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["f", "g", "h", "i"]);
+        dictionary.Range("d", "f").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["d", "e", "f"]);
+        dictionary.Range("dd", "f").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["e", "f"]);
+        dictionary.Range("d", "ff").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["d", "e", "f"]);
     }
 
     protected override IImmutableDictionary<TKey, TValue> Empty<TKey, TValue>()
     {
         return NewEmpty<TKey, TValue>();
     }
+
     static ImmutableAvlTree<TKey, TValue> NewEmpty<TKey, TValue>()
         where TKey : IComparable<TKey>
         where TValue : IComparable<TValue>
