@@ -1,25 +1,31 @@
-﻿using KeysAndValues.Internal;
+﻿using System.Diagnostics;
 
 namespace KeysAndValues.Bench;
 
 public static class Corpus
 {
-    public static (IDisposable MemoryPool, Dictionary<Mem, Mem> Data) Generate(int numKeys, int keyLenMin, int keyLenMax, int valueLenMin, int valueLenMax, int seed = 0)
+    public static SortedDictionary<Mem, Mem> Generate(int numKeys, int keyLenMin, int keyLenMax, int valueLenMin, int valueLenMax, int seed = 0)
     {
-        var pool = new UnsafeMemoryPool();
         var rnd = new Random(seed);
 
-        var dic = new Dictionary<Mem, Mem>(numKeys);
+        var dic = new SortedDictionary<Mem, Mem>();
         for (int i = 0; i < numKeys; i++)
         {
             var kl = rnd.Next(keyLenMin, keyLenMax);
             var vl = rnd.Next(valueLenMin, valueLenMax);
-            var k = pool.Allocate(kl, rnd.NextBytes);
-            var v = pool.Allocate(vl, rnd.NextBytes);
+
+            var km = new byte[kl];
+            var vm = new byte[vl];
+
+            rnd.NextBytes(km);
+            rnd.NextBytes(vm);
+
+            var k = new Mem(km);
+            var v = new Mem(vm);
 
             dic.Add(k, v);
         }
 
-        return (pool, dic);
+        return dic;
     }
 }

@@ -51,11 +51,6 @@ public unsafe readonly struct Mem : IEquatable<Mem>, IComparable<Mem>
 
     public int CompareTo(Mem other)
     {
-        if (memory.Length != other.memory.Length)
-        {
-            return 0;
-        }
-
         if (memory.Length == 0)
         {
             return 0;

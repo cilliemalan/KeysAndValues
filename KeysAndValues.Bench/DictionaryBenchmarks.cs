@@ -129,6 +129,8 @@ public class DictionaryBenchmarks : DataFixture
         }
     }
 
+
+
     [Benchmark]
     public void ContainsKeyImmutableSortedDictionary()
     {
@@ -242,6 +244,17 @@ public class DictionaryBenchmarks : DataFixture
         }
     }
 
+    [Benchmark]
+    public void AddImmutableAvlTree()
+    {
+        var tempDict = ImmutableAvlTree<Mem, Mem>.Empty;
+        for (int i = 0; i < keys.Length; i++)
+        {
+            immadics.Add(tempDict);
+            tempDict = tempDict.Add(keys[i], values[i]);
+        }
+    }
+
 
 
     [Benchmark]
@@ -301,6 +314,16 @@ public class DictionaryBenchmarks : DataFixture
         {
             immsdics.Add(immutableSortedDictionary);
             immutableSortedDictionary = immutableSortedDictionary.SetItem(keys[i], values[i]);
+        }
+    }
+
+    [Benchmark]
+    public void UpdateImmutableAvlTree()
+    {
+        for (int i = 0; i < keys.Length; i++)
+        {
+            immadics.Add(immutableAvlTree);
+            immutableAvlTree = immutableAvlTree.SetItem(keys[i], values[i]);
         }
     }
 
@@ -365,6 +388,16 @@ public class DictionaryBenchmarks : DataFixture
         {
             immsdics.Add(immutableSortedDictionaryForRemoval);
             immutableSortedDictionaryForRemoval = immutableSortedDictionaryForRemoval.Remove(keys[i]);
+        }
+    }
+
+    [Benchmark]
+    public void RemoveImmutableAvlTree()
+    {
+        for (int i = 0; i < keys.Length; i++)
+        {
+            immadics.Add(immutableAvlTreeForRemoval);
+            immutableAvlTreeForRemoval = immutableAvlTreeForRemoval.Remove(keys[i]);
         }
     }
 }
