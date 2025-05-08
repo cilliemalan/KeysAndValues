@@ -40,7 +40,7 @@ namespace KeysAndValues
     {
         public static readonly ImmutableAvlTree<TKey, TValue> Empty = new();
 
-        Node root;
+        readonly Node root;
         int count;
 
         private ImmutableAvlTree()
@@ -97,15 +97,12 @@ namespace KeysAndValues
             set { throw new NotSupportedException(); }
         }
 
-        public object ToBuilder()
-        {
-            throw new NotImplementedException();
-        }
+        public Builder ToBuilder() => new(this);
 
         public ImmutableAvlTree<TKey, TValue> Add(TKey key, TValue value)
         {
             ArgumentNullException.ThrowIfNull(key, nameof(key));
-            Node result = root.Add(key, value, out bool mutated);
+            Node result = root.Add(key, value, out _);
             return Wrap(result, count + 1);
         }
 
@@ -146,11 +143,11 @@ namespace KeysAndValues
                 if (mutated)
                 {
                     result = newResult;
-                    count -= 1;
+                    c -= 1;
                 }
             }
 
-            return Wrap(result, count);
+            return Wrap(result, c);
         }
 
         public ImmutableAvlTree<TKey, TValue> WithComparers(IComparer<TKey>? keyComparer, IEqualityComparer<TValue>? valueComparer)
@@ -840,22 +837,25 @@ namespace KeysAndValues
         public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
         {
             // note System.Collections.Immutable uses an object pool for stacks
-            private readonly object? builder;
+            private readonly Builder? builder;
+            int version;
 
             private Node root;
             private Node? current;
             private Node[]? stack;
             private int stackIndex;
 
-            internal Enumerator(Node root, object? builder = null)
+            internal Enumerator(Node root, Builder? builder = null)
             {
                 Debug.Assert(root is not null);
 
-                this.root = root;
                 this.builder = builder;
-                this.current = null;
-                this.stack = null;
-                this.stackIndex = -1;
+                version = builder?.Version ?? -1;
+
+                this.root = root;
+                current = null;
+                stack = null;
+                stackIndex = -1;
 
                 if (!root.IsEmpty)
                 {
@@ -890,6 +890,10 @@ namespace KeysAndValues
             public bool MoveNext()
             {
                 ObjectDisposedException.ThrowIf(root is null, this);
+                if (builder is not null && builder.Version != version)
+                {
+                    throw new InvalidOperationException("The collection was changed while enumerating");
+                }
 
                 if (stack is null || stackIndex < 0)
                 {
@@ -908,6 +912,7 @@ namespace KeysAndValues
                 ObjectDisposedException.ThrowIf(root is null, this);
 
                 current = null;
+                version = builder?.Version ?? -1;
                 stackIndex = -1;
 
                 if (!root.IsEmpty)
