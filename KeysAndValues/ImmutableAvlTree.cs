@@ -238,7 +238,7 @@ namespace KeysAndValues
             return new DictionaryEnumerator(GetEnumerator());
         }
 
-        public ReverseEnumerable AsReversed() => new(this);
+        public ReverseEnumerable Reversed() => new(this);
 
         void IDictionary.Remove(object key) => throw new NotSupportedException();
         object? IDictionary.this[object key]

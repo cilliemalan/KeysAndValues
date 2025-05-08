@@ -381,7 +381,7 @@ public class AvlTreeTests : AvlTreeTestsBase
         Assert.Equal(numEntries, s.Count());
         Assert.Equal(numEntries, s.DistinctBy(x => x.Key).Count());
 
-        using var en = s.AsReversed().GetEnumerator();
+        using var en = s.Reversed().GetEnumerator();
         int cnt = 0;
         string? prev = null;
         while (en.MoveNext())
