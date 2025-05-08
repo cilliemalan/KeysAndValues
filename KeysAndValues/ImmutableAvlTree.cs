@@ -1,5 +1,6 @@
 ﻿
 using KeysAndValues;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -830,7 +831,8 @@ namespace KeysAndValues
 
             private Node root;
             private Node? current;
-            private Stack<Node>? stack;
+            private Node[]? stack;
+            private int stackIndex;
 
             internal Enumerator(Node root, object? builder = null)
             {
@@ -840,10 +842,11 @@ namespace KeysAndValues
                 this.builder = builder;
                 this.current = null;
                 this.stack = null;
+                this.stackIndex = -1;
 
                 if (!root.IsEmpty)
                 {
-                    stack = new(root.Height);
+                    stack = ArrayPool<Node>.Shared.Rent(root.Height);
                     PushLeft(root);
                 }
             }
@@ -863,7 +866,11 @@ namespace KeysAndValues
             {
                 root = null!;
                 current = null;
-                stack?.Clear();
+                stackIndex = -1;
+                if (stack is not null)
+                {
+                    ArrayPool<Node>.Shared.Return(stack);
+                }
                 stack = null;
             }
 
@@ -871,13 +878,13 @@ namespace KeysAndValues
             {
                 ObjectDisposedException.ThrowIf(root is null, this);
 
-                if (stack is null || stack.Count == 0)
+                if (stack is null || stackIndex < 0)
                 {
                     current = null;
                     return false;
                 }
 
-                var n = stack.Pop();
+                var n = stack[stackIndex--];
                 current = n;
                 PushLeft(n.Right!);
                 return true;
@@ -888,36 +895,27 @@ namespace KeysAndValues
                 ObjectDisposedException.ThrowIf(root is null, this);
 
                 current = null;
-                stack?.Clear();
-                PushLeft(root);
-            }
+                stackIndex = -1;
 
-            bool IEnumerator.MoveNext()
-            {
-                ObjectDisposedException.ThrowIf(root is null, this);
-
-                if (stack is null || stack.Count == 0)
+                if (!root.IsEmpty)
                 {
-                    current = null;
-                    return false;
+                    PushLeft(root);
                 }
-
-                var n = stack.Pop();
-                current = n;
-                PushLeft(n.Right!);
-                return true;
             }
 
-            private readonly void PushLeft(Node node)
+            bool IEnumerator.MoveNext() => MoveNext();
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private void PushLeft(Node node)
             {
-                // Pushes the node and all its lefts onto the stack
                 Debug.Assert(node is not null);
                 Debug.Assert(stack is not null);
-                ArgumentNullException.ThrowIfNull(node);
+                Debug.Assert(stackIndex < stack.Length - 1);
 
+                // Push the node and all its lefts onto the stack
                 while (!node.IsEmpty)
                 {
-                    stack.Push(node);
+                    stack[++stackIndex] = node;
                     node = node.Left!;
                 }
             }
@@ -929,7 +927,7 @@ namespace KeysAndValues
                 current = null;
                 if (stack is not null)
                 {
-                    stack.Clear();
+                    stackIndex = -1;
                     PushLeft(root);
                 }
             }
