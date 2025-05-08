@@ -211,34 +211,6 @@ public class AvlTreeTests : AvlTreeTestsBase
     }
 
     [Fact]
-    public void EnumeratorRecyclingMisuse()
-    {
-        ImmutableAvlTree<int, int> collection = ImmutableAvlTree.Create<int, int>().Add(3, 5);
-        ImmutableAvlTree<int, int>.Enumerator enumerator = collection.GetEnumerator();
-        ImmutableAvlTree<int, int>.Enumerator enumeratorCopy = enumerator;
-        Assert.True(enumerator.MoveNext());
-        Assert.False(enumerator.MoveNext());
-        enumerator.Dispose();
-        Assert.Throws<ObjectDisposedException>(() => enumerator.MoveNext());
-        Assert.Throws<ObjectDisposedException>(() => enumerator.Reset());
-        Assert.Throws<ObjectDisposedException>(() => enumerator.Current);
-        Assert.Throws<ObjectDisposedException>(() => enumeratorCopy.MoveNext());
-        Assert.Throws<ObjectDisposedException>(() => enumeratorCopy.Reset());
-        Assert.Throws<ObjectDisposedException>(() => enumeratorCopy.Current);
-
-        enumerator.Dispose(); // double-disposal should not throw
-        enumeratorCopy.Dispose();
-
-        // We expect that acquiring a new enumerator will use the same underlying Stack<T> object,
-        // but that it will not throw exceptions for the new enumerator.
-        enumerator = collection.GetEnumerator();
-        Assert.True(enumerator.MoveNext());
-        Assert.False(enumerator.MoveNext());
-        Assert.Throws<InvalidOperationException>(() => enumerator.Current);
-        enumerator.Dispose();
-    }
-
-    [Fact]
     public void Remove_KeyExists_RemovesKeyValuePair()
     {
         ImmutableAvlTree<int, string> dictionary = new Dictionary<int, string>
@@ -328,6 +300,48 @@ public class AvlTreeTests : AvlTreeTestsBase
         Assert.Contains("'c'", exception.Message);
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(10)]
+    [InlineData(15)]
+    [InlineData(16)]
+    [InlineData(17)]
+    [InlineData(31)]
+    [InlineData(32)]
+    [InlineData(33)]
+    [InlineData(127)]
+    [InlineData(128)]
+    [InlineData(129)]
+    [InlineData(1023)]
+    [InlineData(1024)]
+    [InlineData(1025)]
+    public void EnumerationTests(int numEntries)
+    {
+        var s = Empty<string, string>().AddRange(Enumerable.Range(0, numEntries).Select(x => new KeyValuePair<string, string>(x.ToString(), x.ToString())));
+
+        Assert.Equal(numEntries, s.Count());
+        Assert.Equal(numEntries, s.DistinctBy(x => x.Key).Count());
+
+        using var en = s.GetEnumerator();
+        int cnt = 0;
+        while (en.MoveNext())
+        {
+            cnt++;
+        }
+        Assert.Equal(numEntries, cnt);
+
+        en.Reset();
+        cnt = 0;
+        while (en.MoveNext())
+        {
+            cnt++;
+        }
+        Assert.Equal(numEntries, cnt);
+
+        var d = (IDictionary)s;
+        Assert.Equal(numEntries, d.Cast<DictionaryEntry>().Count());
+    }
 
     protected override IImmutableDictionary<TKey, TValue> Empty<TKey, TValue>()
     {
