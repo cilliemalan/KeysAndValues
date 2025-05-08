@@ -14,6 +14,8 @@ namespace KeysAndValues
 
     // based on immutable sorted dictionary from the .net runtime
 
+    [DebuggerDisplay("Count = {Count}")]
+    [DebuggerTypeProxy(typeof(ImmutableDictionaryDebuggerProxy<,>))]
     public static class ImmutableAvlTree
     {
         public static ImmutableAvlTree<TKey, TValue> Create<TKey, TValue>()
@@ -1044,6 +1046,71 @@ namespace KeysAndValues
         }
     }
 
+    internal sealed class ImmutableDictionaryDebuggerProxy<TKey, TValue> where TKey : notnull
+    {
+        /// <summary>
+        /// The dictionary to show to the debugger.
+        /// </summary>
+        private readonly IReadOnlyDictionary<TKey, TValue> _dictionary;
+
+        /// <summary>
+        /// The contents of the dictionary, cached into an array.
+        /// </summary>
+        private DebugViewDictionaryItem<TKey, TValue>[]? _cachedContents;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ImmutableDictionaryDebuggerProxy{TKey, TValue}"/> class.
+        /// </summary>
+        /// <param name="dictionary">The dictionary to show in the debugger.</param>
+        public ImmutableDictionaryDebuggerProxy(IReadOnlyDictionary<TKey, TValue> dictionary)
+        {
+            ArgumentNullException.ThrowIfNull(dictionary);
+            _dictionary = dictionary;
+        }
+
+        /// <summary>
+        /// Gets the contents of the dictionary for display in the debugger.
+        /// </summary>
+        [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
+        public DebugViewDictionaryItem<TKey, TValue>[] Contents
+        {
+            get
+            {
+                if (_cachedContents is null)
+                {
+                    _cachedContents = new DebugViewDictionaryItem<TKey, TValue>[_dictionary.Count];
+                    for (int i = 0; i < _cachedContents.Length; i++)
+                    {
+                        _cachedContents[i] = new(_dictionary.ElementAt(i));
+                    }
+                }
+
+                return _cachedContents;
+            }
+        }
+    }
+
+    [DebuggerDisplay("{Value}", Name = "[{Key}]")]
+    internal readonly struct DebugViewDictionaryItem<TKey, TValue>
+    {
+        public DebugViewDictionaryItem(TKey key, TValue value)
+        {
+            Key = key;
+            Value = value;
+        }
+
+        public DebugViewDictionaryItem(KeyValuePair<TKey, TValue> keyValue)
+        {
+            Key = keyValue.Key;
+            Value = keyValue.Value;
+        }
+
+        [DebuggerBrowsable(DebuggerBrowsableState.Collapsed)]
+        public TKey Key { get; }
+
+        [DebuggerBrowsable(DebuggerBrowsableState.Collapsed)]
+        public TValue Value { get; }
+    }
 }
 
 namespace System.Collections.Generic
