@@ -874,25 +874,66 @@ namespace KeysAndValues
             private int stackIndex;
 
             private readonly bool reverse;
+            private readonly bool hasStart;
             private readonly TKey? start;
+            private readonly bool hasEnd;
             private readonly TKey? end;
 
-            internal Enumerator(Node root,
-                Builder? builder = null,
-                bool reverse = false,
-                TKey? start = default,
-                TKey? end = default)
+            internal Enumerator(Node root, Builder? builder = null)
             {
                 Debug.Assert(root is not null);
-                Debug.Assert(reverse || end is null || (start is not null && start.CompareTo(end) <= 0));
-                Debug.Assert(!reverse || end is null || (start is not null && start.CompareTo(end) >= 0));
 
                 this.builder = builder;
                 this.root = root;
-                this.reverse = reverse;
-                this.start = start;
-                this.end = end;
                 this.stack = !root.IsEmpty ? ArrayPool<Node>.Shared.Rent(root.Height) : [];
+
+                Reset();
+            }
+
+            internal Enumerator(Node root, bool reverse)
+            {
+                Debug.Assert(root is not null);
+
+                this.builder = null;
+                this.root = root;
+                this.reverse = reverse;
+                this.stack = !root.IsEmpty ? ArrayPool<Node>.Shared.Rent(root.Height) : [];
+
+                Reset();
+            }
+
+            internal Enumerator(Node root,
+                bool reverse,
+                TKey? start)
+            {
+                Debug.Assert(root is not null);
+
+                this.builder = null;
+                this.root = root;
+                this.reverse = reverse;
+                this.start = start ?? throw new ArgumentNullException(nameof(start));
+                this.stack = !root.IsEmpty ? ArrayPool<Node>.Shared.Rent(root.Height) : [];
+                this.hasStart = true;
+                this.hasEnd = false;
+
+                Reset();
+            }
+
+            internal Enumerator(Node root,
+                bool reverse,
+                TKey? start,
+                TKey? end)
+            {
+                Debug.Assert(root is not null);
+
+                this.builder = null;
+                this.root = root;
+                this.reverse = reverse;
+                this.start = start ?? throw new ArgumentNullException(nameof(start));
+                this.end = end ?? throw new ArgumentNullException(nameof(end));
+                this.stack = !root.IsEmpty ? ArrayPool<Node>.Shared.Rent(root.Height) : [];
+                this.hasStart = true;
+                this.hasEnd = true;
 
                 Reset();
             }
@@ -945,7 +986,7 @@ namespace KeysAndValues
                     PushLeft(n.Right!);
                 }
 
-                if (end is not null)
+                if (hasEnd)
                 {
                     var comparison = current.Value.Key.CompareTo(end);
                     if ((reverse && comparison <= 0) || (!reverse && comparison >= 0))
@@ -973,7 +1014,7 @@ namespace KeysAndValues
                     return;
                 }
 
-                if (start is null)
+                if (!hasStart)
                 {
                     if (reverse)
                     {
@@ -986,7 +1027,7 @@ namespace KeysAndValues
                 }
                 else
                 {
-                    AdvanceTo(start);
+                    AdvanceTo(start!);
                 }
             }
 
@@ -1407,11 +1448,55 @@ namespace KeysAndValues
             }
         }
 
-        public readonly struct Enumerable(ImmutableAvlTree<TKey, TValue> instance, bool reversed, TKey? start = default, TKey? end = default) : IEnumerable<KeyValuePair<TKey, TValue>>
+        public readonly struct Enumerable : IEnumerable<KeyValuePair<TKey, TValue>>
         {
-            public readonly IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => new Enumerator(instance.root, null, reversed, start, end);
+            private readonly ImmutableAvlTree<TKey, TValue> instance;
+            private readonly bool reversed;
+            private readonly TKey? start;
+            private readonly TKey? end;
+            private readonly bool hasStart;
+            private readonly bool hasEnd;
 
-            readonly IEnumerator IEnumerable.GetEnumerator() => new Enumerator(instance.root, null, reversed, start, end);
+            public Enumerable(ImmutableAvlTree<TKey, TValue> instance, bool reversed)
+            {
+                this.instance = instance;
+                this.reversed = reversed;
+            }
+
+            public Enumerable(ImmutableAvlTree<TKey, TValue> instance, bool reversed, TKey start)
+            {
+                this.instance = instance;
+                this.reversed = reversed;
+                this.start = start ?? throw new ArgumentNullException(nameof(start));
+                this.hasStart = true;
+            }
+
+            public Enumerable(ImmutableAvlTree<TKey, TValue> instance, bool reversed, TKey start, TKey end)
+            {
+                this.instance = instance;
+                this.reversed = reversed;
+                this.start = start ?? throw new ArgumentNullException(nameof(start));
+                this.end = end ?? throw new ArgumentNullException(nameof(end));
+                this.hasStart = true;
+                this.hasEnd = true;
+            }
+
+            public readonly IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+            {
+                if (hasEnd)
+                {
+                    return new Enumerator(instance.root, reversed, start, end);
+                }
+
+                if (hasStart)
+                {
+                    return new Enumerator(instance.root, reversed, start);
+                }
+
+                return new Enumerator(instance.root, reversed);
+            }
+
+            readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
     }
 
