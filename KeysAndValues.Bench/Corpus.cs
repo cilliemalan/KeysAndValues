@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics;
+using System.Diagnostics.Contracts;
+using System.Security.Cryptography;
 
 namespace KeysAndValues.Bench;
 
@@ -6,26 +8,35 @@ public static class Corpus
 {
     public static SortedDictionary<Mem, Mem> Generate(int numKeys, int keyLenMin, int keyLenMax, int valueLenMin, int valueLenMax, int seed = 0)
     {
-        var rnd = new Random(seed);
-
         var dic = new SortedDictionary<Mem, Mem>();
+        foreach (var item in GenerateUnsorted(numKeys, keyLenMin, keyLenMax, valueLenMin, valueLenMax, seed))
+        {
+            dic.Add(item.Key, item.Value);
+        }
+
+        return dic;
+    }
+
+    public static IEnumerable<KeyValuePair<Mem,Mem>> GenerateUnsorted(int numKeys, int keyLenMin, int keyLenMax, int valueLenMin, int valueLenMax, int seed = 0)
+    {
+        var r = new Random();
+        using var rng = RandomNumberGenerator.Create();
+
         for (int i = 0; i < numKeys; i++)
         {
-            var kl = rnd.Next(keyLenMin, keyLenMax);
-            var vl = rnd.Next(valueLenMin, valueLenMax);
+            var kl = r.Next(keyLenMin, keyLenMax);
+            var vl = r.Next(valueLenMin, valueLenMax);
 
             var km = new byte[kl];
             var vm = new byte[vl];
 
-            rnd.NextBytes(km);
-            rnd.NextBytes(vm);
+            rng.GetBytes(km);
+            rng.GetBytes(vm);
 
             var k = new Mem(km);
             var v = new Mem(vm);
 
-            dic.Add(k, v);
+            yield return new(k, v);
         }
-
-        return dic;
     }
 }
