@@ -17,7 +17,7 @@ public class SegmentedBufferWriterTests
     [Fact]
     public void EmptyTest()
     {
-        SegmentedBufferWriter<byte> writer = new();
+        using SegmentedBufferWriter<byte> writer = new();
         var seg = writer.WrittenSequence;
         Assert.Equal(0, seg.Length);
         Assert.True(seg.IsEmpty);
@@ -26,7 +26,7 @@ public class SegmentedBufferWriterTests
     [Fact]
     public void SingleByteTest()
     {
-        SegmentedBufferWriter<byte> writer = new();
+        using SegmentedBufferWriter<byte> writer = new();
         writer.GetSpan(1)[0] = 0x01;
         writer.Advance(1);
         var s = writer.WrittenSequence;
@@ -37,7 +37,7 @@ public class SegmentedBufferWriterTests
     [Fact]
     public void NoAdvanceTest()
     {
-        SegmentedBufferWriter<byte> writer = new();
+        using SegmentedBufferWriter<byte> writer = new();
         var s1 = writer.GetSpan();
         var s2 = writer.GetSpan();
         s1[0] = 1;
@@ -60,7 +60,7 @@ public class SegmentedBufferWriterTests
     public void VariousSizesTest(int chunkSize, int writeSize, int numWrites)
     {
         var allData = RandomNumberGenerator.GetBytes(writeSize * numWrites);
-        SegmentedBufferWriter<byte> writer = new(chunkSize);
+        using SegmentedBufferWriter<byte> writer = new(chunkSize);
         for (int i = 0; i < numWrites; i++)
         {
             var s = writer.GetSpan(writeSize);
@@ -79,7 +79,7 @@ public class SegmentedBufferWriterTests
 
     private static T Churn<T>(T thing)
     {
-        SegmentedBufferWriter<byte> writer = new();
+        using SegmentedBufferWriter<byte> writer = new();
         System.Text.Json.Utf8JsonWriter ujw = new(writer);
         System.Text.Json.JsonSerializer.Serialize(ujw, thing);
         using var ms = new MemoryStream(writer.Length);
