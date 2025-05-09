@@ -6,7 +6,7 @@ namespace KeysAndValues.Internal;
 /// A buffer writer that creates segments of memory as required
 /// rather than resizeing and reallocating a single buffer.
 /// </summary>
-public sealed class SegmentedBufferWriter<T>(int minimumSegmentSize = 256) : IBufferWriter<T>
+public sealed class SegmentedBufferWriter<T>(int minimumSegmentSize = 256) : IBufferWriter<T>, IDisposable
 {
     private readonly int minimumSegmentSize = minimumSegmentSize;
     Segment[] segments = [];
@@ -19,6 +19,8 @@ public sealed class SegmentedBufferWriter<T>(int minimumSegmentSize = 256) : IBu
     {
         get
         {
+            ObjectDisposedException.ThrowIf(segments is null, this);
+
             if (segmentIndex == 0)
             {
                 if (segments.Length == 0)
@@ -59,6 +61,7 @@ public sealed class SegmentedBufferWriter<T>(int minimumSegmentSize = 256) : IBu
 
     public void Advance(int count)
     {
+        ObjectDisposedException.ThrowIf(segments is null, this);
         ArgumentOutOfRangeException.ThrowIfLessThan(count, 0);
         if (segmentIndex >= segments.Length)
         {
@@ -80,8 +83,25 @@ public sealed class SegmentedBufferWriter<T>(int minimumSegmentSize = 256) : IBu
         length += count;
     }
 
+    public void Dispose()
+    {
+        var s = segments;
+        if (s is null)
+        {
+            return;
+        }
+
+        segments = null!;
+        foreach (var segment in s)
+        {
+            segment.Dispose();
+        }
+    }
+
     public Memory<T> GetMemory(int sizeHint = 0)
     {
+        ObjectDisposedException.ThrowIf(segments is null, this);
+
         if (sizeHint == 0)
         {
             sizeHint = 1;
@@ -118,8 +138,11 @@ public sealed class SegmentedBufferWriter<T>(int minimumSegmentSize = 256) : IBu
 
         public void Dispose()
         {
-            ArrayPool<T>.Shared.Return(array);
-            array = null!;
+            if (array is not null)
+            {
+                ArrayPool<T>.Shared.Return(array);
+                array = null!;
+            }
             writtenLength = 0;
         }
     }
