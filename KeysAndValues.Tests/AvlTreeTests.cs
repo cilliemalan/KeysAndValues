@@ -1,4 +1,5 @@
-﻿using Microsoft.Diagnostics.Tracing;
+﻿using BenchmarkDotNet.Disassemblers;
+using Microsoft.Diagnostics.Tracing;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -372,7 +373,7 @@ public class AvlTreeTests : AvlTreeTestsBase
     [InlineData(1025)]
     public void ReverseEnumerationTests(int numEntries)
     {
-        var s = ImmutableAvlTree<string,string>.Empty
+        var s = ImmutableAvlTree<string, string>.Empty
             .AddRange(Enumerable.Range(0, numEntries)
             .Select(x => new KeyValuePair<string, string>(
                 x.ToString("0000"),
@@ -424,15 +425,81 @@ public class AvlTreeTests : AvlTreeTestsBase
                 { "i", 9 }
             }.ToImmutableAvlTree();
 
-        dictionary.Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["a", "b", "c", "d", "e", "f", "g", "h", "i"]);
-        dictionary.Range("a", "i").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["a", "b", "c", "d", "e", "f", "g", "h", "i"]);
-        dictionary.Range("c", "g").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["c", "d", "e", "f", "g"]);
-        dictionary.Range("a", "b").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["a", "b"]);
-        dictionary.Range("a", "a").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["a"]);
-        dictionary.Range("f", "i").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["f", "g", "h", "i"]);
-        dictionary.Range("d", "f").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["d", "e", "f"]);
-        dictionary.Range("dd", "f").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["e", "f"]);
-        dictionary.Range("d", "ff").Select(x => x.Key).ToArray().AsSpan().SequenceEqual(["d", "e", "f"]);
+        Assert.Equal(["a", "b", "c", "d", "e", "f", "g", "h", "i"], dictionary.Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["a", "b", "c", "d", "e", "f", "g", "h", "i"], dictionary.Range("a", "j").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["c", "d", "e", "f", "g"], dictionary.Range("c", "h").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["a", "b"], dictionary.Range("a", "c").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["a"], dictionary.Range("a", "b").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["f", "g", "h", "i"], dictionary.Range("f", "j").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["d", "e", "f"], dictionary.Range("d", "g").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["e", "f"], dictionary.Range("dd", "g").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["d", "e", "f"], dictionary.Range("d", "ff").Select(x => x.Key).ToArray().AsSpan());
+    }
+
+    [Fact]
+    public void InexactRangeEnumeration()
+    {
+        var dictionary = new Dictionary<string, int>()
+            {
+                { "aa", 1 },
+                { "bb", 2 },
+                { "cc", 3 },
+                { "dd", 4 },
+                { "ee", 5 },
+                { "ff", 6 },
+                { "gg", 7 },
+                { "hh", 8 },
+                { "ii", 9 }
+            }.ToImmutableAvlTree();
+
+        Assert.Equal(["aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii"], dictionary.Range("aa", "iz").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii"], dictionary.Range("a ", "iz").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii"], dictionary.Range("aa", "iz").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["cc", "dd", "ee", "ff", "gg"], dictionary.Range("cc", "gz").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["cc", "dd", "ee", "ff", "gg"], dictionary.Range("c", "gz").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["aa"], dictionary.Range("aa", "az").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["aa"], dictionary.Range("", "az").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["aa"], dictionary.Range("", "aaa").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["aa"], dictionary.Range("aa", "aaa").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal(["aa"], dictionary.Range("a", "aaa").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal([], dictionary.Range("", "a").Select(x => x.Key).ToArray().AsSpan());
+        Assert.Equal([], dictionary.Range("", "aa").Select(x => x.Key).ToArray().AsSpan());
+    }
+
+    [Fact]
+    public void ExhaustiveRangeEnumeration()
+    {
+        var items = Enumerable.Range(0, 1000).Select(i => new KeyValuePair<string, int>($"{i:00000}5", i)).ToList();
+        var dictionary = items.OrderBy(_ => Random.Shared.Next()).ToImmutableAvlTree();
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            var start = items[i].Key;
+            var expectedCount = items.Count - i;
+            Assert.Equal(expectedCount, dictionary.Range(start).Count());
+
+            start = $"{start[..5]}4";
+            Assert.Equal(expectedCount, dictionary.Range(start).Count());
+
+            if (expectedCount - 1 >= 0)
+            {
+                start = $"{start[..5]}6";
+                Assert.Equal(expectedCount - 1, dictionary.Range(start).Count());
+            }
+        }
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            var end = items[i].Key;
+            var expectedCount = i;
+            Assert.Equal(expectedCount, dictionary.Range("", end).Count());
+
+            end = $"{end[..5]}4";
+            Assert.Equal(expectedCount, dictionary.Range("", end).Count());
+
+            end = $"{end[..5]}6";
+            Assert.Equal(expectedCount + 1, dictionary.Range("", end).Count());
+        }
     }
 
     protected override IImmutableDictionary<TKey, TValue> Empty<TKey, TValue>()
