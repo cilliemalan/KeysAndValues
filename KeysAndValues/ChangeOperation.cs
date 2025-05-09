@@ -1,15 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using KeysAndValues.Internal;
+using System.Buffers;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Security.Cryptography;
 
-namespace KeysAndValues
+namespace KeysAndValues;
+
+public readonly struct ChangeOperation
 {
-    public readonly struct ChangeOperation
-    {
-        public ChangeOperationType Type { get; init; }
-        public ReadOnlyMemory<byte> Key { get; init; }
-        public ReadOnlyMemory<byte> Value { get; init; }
-    }
+    public ChangeOperationType Type { get; init; }
+    public ReadOnlyMemory<byte> Key { get; init; }
+    public ReadOnlyMemory<byte> Value { get; init; }
 }
