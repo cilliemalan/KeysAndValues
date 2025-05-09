@@ -1,8 +1,8 @@
 ﻿using KeysAndValues;
 using System.Diagnostics;
-using System.Diagnostics.Tracing;
 
 var sw = new Stopwatch();
+var r = new Random();
 Console.Write("Generating corpus...");
 sw.Restart();
 var corpus = new List<KeyValuePair<Mem, Mem>>(1000000);
@@ -36,16 +36,18 @@ Console.WriteLine($" {sw.Elapsed.TotalMilliseconds:F0}ms ({sw.Elapsed.TotalSecon
 
 
 Console.Write("Doing lookups");
-var r = new Random();
 dummy = 0;
 sw.Restart();
 for (int i = 0; i < corpus.Count; i++)
 {
-    var key = corpus[r.Next(corpus.Count)].Key;
-    dummy += tree[key].Length;
+    var item = corpus[r.Next(corpus.Count)];
+    tree = tree.SetItem(item.Key, item.Value);
 }
 Console.WriteLine($" {sw.Elapsed.TotalMilliseconds:F0}ms ({sw.Elapsed.TotalSeconds / corpus.Count * 1.0e9:F0}ns per lookup)");
 
+Console.Write("Doing adds");
+dummy = 0;
+sw.Restart();
 
 
 Console.WriteLine("Done");
