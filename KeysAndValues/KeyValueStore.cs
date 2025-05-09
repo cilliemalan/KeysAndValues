@@ -85,6 +85,13 @@ public sealed partial class KeyValueStore : IEnumerable<KeyValuePair<Mem, Mem>>
     private static ImmutableAvlTree<Mem, Mem>.Builder CreateAppliedStore(ChangeOperation[] operations, ImmutableAvlTree<Mem, Mem> s)
     {
         var b = s.ToBuilder();
+        ApplyToBuilder(operations, b);
+
+        return b;
+    }
+
+    private static void ApplyToBuilder(ChangeOperation[] operations, ImmutableAvlTree<Mem, Mem>.Builder builder)
+    {
         for (int i = 0; i < operations.Length; i++)
         {
             var operation = operations[i];
@@ -92,17 +99,15 @@ public sealed partial class KeyValueStore : IEnumerable<KeyValuePair<Mem, Mem>>
             switch (operation.Type)
             {
                 case ChangeOperationType.Set:
-                    b[operation.Key] = operation.Value;
+                    builder[operation.Key] = operation.Value;
                     break;
                 case ChangeOperationType.Delete:
-                    b.Remove(operation.Key);
+                    builder.Remove(operation.Key);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(operations));
             }
         }
-
-        return b;
     }
 
 
