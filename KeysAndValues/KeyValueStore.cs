@@ -1,103 +1,130 @@
-﻿using System.Runtime.CompilerServices;
+﻿using KeysAndValues.Internal;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace KeysAndValues;
 
 public sealed partial class KeyValueStore : IEnumerable<KeyValuePair<Mem, Mem>>
 {
     private readonly SpinLock spinLock = new();
+    private readonly Log? log;
     private long sequence;
     private ImmutableAvlTree<Mem, Mem> store = ImmutableAvlTree<Mem, Mem>.Empty;
 
-    private KeyValueStore()
+    public bool FlushWalAfterEachWrite { get; set; } = false;
+
+    private KeyValueStore(Stream? writeAheadLogStream)
     {
+        if (writeAheadLogStream is not null)
+        {
+            log = new(writeAheadLogStream);
+        }
     }
 
-    private KeyValueStore(IDictionary<Mem, Mem> data, long sequence)
-    {
-        this.sequence = sequence;
-        store = ImmutableAvlTree.CreateRange(data);
-    }
-
-    public static KeyValueStore CreateEmpty() => new();
-
-    public static KeyValueStore CreateNewFrom(IDictionary<Mem, Mem> source, long sequence = 1) =>
-        new(ImmutableAvlTree.CreateRange(source), sequence);
+    public static KeyValueStore CreateEmpty(Stream? writeAheadLog) => new(writeAheadLog);
 
     public bool TryGet(Mem key, out Mem value)
     {
         return store.TryGetValue(key, out value);
     }
 
-    public unsafe long Apply(ChangeOperation[] operations)
+    public long Apply(ChangeOperation[] operations)
     {
-        if (operations.Length == 0)
+        bool mustFlushAndExit = false;
+        if (FlushWalAfterEachWrite && log is not null)
         {
-            return Interlocked.Increment(ref sequence);
-        }
-
-        for (; ; )
-        {
-            var s = store;
-
-            var b = s.ToBuilder();
-            for (int i = 0; i < operations.Length; i++)
-            {
-                var operation = operations[i];
-
-                switch (operation.Type)
-                {
-                    case ChangeOperationType.Set:
-                        b[operation.Key] = operation.Value;
-                        break;
-                    case ChangeOperationType.Delete:
-                        b.Remove(operation.Key);
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(operations));
-                }
-            }
-
-            var newSequence = TryMerge(s, b.ToImmutable());
-            if (newSequence != 0)
-            {
-                return newSequence;
-            }
-        }
-    }
-
-    private long TryMerge(ImmutableAvlTree<Mem, Mem> oldStore, ImmutableAvlTree<Mem, Mem> newStore)
-    {
-        bool taken = false;
-        spinLock.Enter(ref taken);
-        if (!taken)
-        {
-            return 0;
+            Monitor.Enter(log, ref mustFlushAndExit);
         }
 
         try
         {
-            bool exchanged = Interlocked.CompareExchange(ref store, newStore, oldStore) == oldStore;
-            if (!exchanged)
+            for (; ; )
             {
-                return 0;
-            }
+                var s = store;
 
-            return ++sequence;
+                var builder = CreateAppliedStore(operations, s);
+
+                bool spinLockTaken = false;
+                spinLock.TryEnter(ref spinLockTaken);
+                if (!spinLockTaken)
+                {
+                    Debug.Assert(!FlushWalAfterEachWrite);
+                    Thread.Yield();
+                    continue;
+                }
+
+                bool exchanged = Interlocked.CompareExchange(ref store, builder.ToImmutable(), s) == s;
+                if (!exchanged)
+                {
+                    spinLock.Exit();
+                    Debug.Assert(!FlushWalAfterEachWrite);
+                    continue;
+                }
+
+                // NOTE: Using interlocked because I don't believe the spinlock
+                // will do a memory barrier.
+                var newSequence = Interlocked.Increment(ref sequence);
+                log?.Append(operations, newSequence);
+
+                spinLock.Exit();
+
+                return newSequence;
+            }
         }
         finally
         {
-            spinLock.Exit();
+            if (mustFlushAndExit)
+            {
+                log!.Flush();
+                Monitor.Exit(log);
+            }
         }
     }
 
-    public KeyValueStore Snapshot()
+    private static ImmutableAvlTree<Mem, Mem>.Builder CreateAppliedStore(ChangeOperation[] operations, ImmutableAvlTree<Mem, Mem> s)
+    {
+        var b = s.ToBuilder();
+        for (int i = 0; i < operations.Length; i++)
+        {
+            var operation = operations[i];
+
+            switch (operation.Type)
+            {
+                case ChangeOperationType.Set:
+                    b[operation.Key] = operation.Value;
+                    break;
+                case ChangeOperationType.Delete:
+                    b.Remove(operation.Key);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(operations));
+            }
+        }
+
+        return b;
+    }
+
+
+    public void FlushWriteAheadLog()
+    {
+        log?.Flush();
+    }
+
+    public Task FlushWriteAheadLogAsync(CancellationToken cancellationToken = default)
+    {
+        return log?.FlushAsync(cancellationToken) ?? Task.CompletedTask;
+    }
+
+
+    public (long Sequence, IReadOnlyDictionary<Mem, Mem> Store) Snapshot()
     {
         ForceTakeSpinlock();
         var sequence = this.sequence;
         var store = this.store;
         spinLock.Exit();
 
-        return new(store, sequence);
+        return (sequence, store);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -10,24 +10,25 @@ namespace KeysAndValues;
 
 public partial class KeyValueStore
 {
-    private static bool TryDeserialize(Stream stream, out int amtRead, [MaybeNullWhen(false)] out ChangeOperation[] operations)
+    internal static bool TryDeserializeLogEntry(Stream stream, out int amtRead, out Log.LogEntry entry)
     {
         amtRead = 0;
-        operations = null;
+        entry = default;
 
         // read the length and type
-        Span<byte> header = stackalloc byte[5];
-        int r = stream.ReadAtLeast(header, 5, false);
+        Span<byte> header = stackalloc byte[4 + 1 + 8];
+        int r = stream.ReadAtLeast(header, header.Length, false);
         amtRead += r;
-        if (r != 5)
+        if (r != header.Length)
         {
             return false;
         }
 
-        // parse the length and type
+        // parse the length, type, and sequence
         int length = BitConverter.ToInt32(header);
         int type = header[4];
-        if (length < 37)
+        long sequence = BitConverter.ToInt64(header[5..]);
+        if (length < 32 + header.Length || sequence < 0)
         {
             return false;
         }
@@ -51,70 +52,107 @@ public partial class KeyValueStore
             return false;
         }
 
-        if (type != 1)
+        var letype = (Log.LogEntryType)type;
+        switch (letype)
         {
-            operations = [];
-            return true;
-        }
+            case Log.LogEntryType.ChangeOperation:
+                {
+                    var index = 13;
+                    int count = BitConverter.ToInt32(buffer[index..]);
+                    index += 4;
+                    var operations = new ChangeOperation[count];
+                    for (int i = 0; i < count; i++)
+                    {
+                        var optype = (ChangeOperationType)buffer[index++];
+                        ReadOnlyMemory<byte> key;
+                        ReadOnlyMemory<byte> value;
+                        switch (operations[i].Type)
+                        {
+                            case ChangeOperationType.Set:
+                                int kl = BitConverter.ToInt32(buffer[index..]);
+                                index += 4;
+                                key = new(bdata, index, kl);
+                                index += kl;
+                                int vl = BitConverter.ToInt32(buffer[index..]);
+                                index += 4;
+                                value = new(bdata, index, vl);
+                                index += vl;
+                                break;
+                            case ChangeOperationType.Delete:
+                                int dkl = BitConverter.ToInt32(buffer[index..]);
+                                index += 4;
+                                key = new ReadOnlyMemory<byte>(bdata, index, dkl);
+                                index += dkl;
+                                value = default;
+                                break;
+                            default:
+                            case ChangeOperationType.None:
+                                key = default;
+                                value = default;
+                                break;
+                        }
+                        operations[i] = new ChangeOperation
+                        {
+                            Type = optype,
+                            Key = key,
+                            Value = value
+                        };
+                    }
 
-        var index = 5;
-        int count = BitConverter.ToInt32(buffer[index..]);
-        index += 4;
-        operations = new ChangeOperation[count];
-        for (int i = 0; i < count; i++)
-        {
-            var optype = (ChangeOperationType)buffer[index++];
-            ReadOnlyMemory<byte> key;
-            ReadOnlyMemory<byte> value;
-            switch (operations[i].Type)
-            {
-                case ChangeOperationType.Set:
-                    int kl = BitConverter.ToInt32(buffer[index..]);
-                    index += 4;
-                    key = new(bdata, index, kl);
-                    index += kl;
-                    int vl = BitConverter.ToInt32(buffer[index..]);
-                    index += 4;
-                    value = new(bdata, index, vl);
-                    index += vl;
-                    break;
-                case ChangeOperationType.Delete:
-                    int dkl = BitConverter.ToInt32(buffer[index..]);
-                    index += 4;
-                    key = new ReadOnlyMemory<byte>(bdata, index, dkl);
-                    index += dkl;
-                    value = default;
-                    break;
-                default:
-                case ChangeOperationType.None:
-                    key = default;
-                    value = default;
-                    break;
-            }
-            operations[i] = new ChangeOperation
-            {
-                Type = optype,
-                Key = key,
-                Value = value
-            };
+                    entry = new()
+                    {
+                        Type = letype,
+                        Sequence = sequence,
+                        ChangeOperations = operations
+                    };
+                    return true;
+                }
+            case Log.LogEntryType.Snapshot:
+                {
+                    // note: reading it like this prevents the 
+                    // entire block from ever being GC'd
+                    // which is fine as long as no dictionaries
+                    // are built based on it.
+                    var index = 13;
+                    var builder = ImmutableAvlTree<Mem, Mem>.Empty.ToBuilder();
+                    while (index < length - 32)
+                    {
+                        int kl = BitConverter.ToInt32(buffer[index..]);
+                        index += 4;
+                        var key = new ReadOnlyMemory<byte>(bdata, index, kl);
+                        index += kl;
+                        int vl = BitConverter.ToInt32(buffer[index..]);
+                        index += 4;
+                        var value = new ReadOnlyMemory<byte>(bdata, index, vl);
+                        index += vl;
+                        builder.Add(key, value);
+                    }
+                    entry = new() { Type = letype, Sequence = sequence, Snapshot = builder.ToImmutable() };
+                }
+                return true;
+            default:
+                entry = new() { Type = letype, Sequence = sequence };
+                return true;
         }
-
-        return true;
     }
 
-    private static void Serialize(IList<ChangeOperation> operations, Stream stream)
+    private static void Serialize(IList<ChangeOperation> operations, long sequence, Stream stream)
     {
-        var writer = new SegmentedBufferWriter<byte>();
-        Serialize(operations, writer);
-        foreach (var mem in writer.WrittenSequence)
-        {
-            stream.Write(mem.Span);
-        }
+        var writer = new ArrayBufferWriter<byte>();
+        Serialize(operations, sequence, writer);
+        stream.Write(writer.WrittenSpan);
     }
 
-    private static void Serialize(IList<ChangeOperation> operations, IBufferWriter<byte> writer)
+    private static void Serialize(ImmutableAvlTree<Mem, Mem> snapshot, long sequence, Stream stream)
     {
-        int bytesRequired = 4 + 1 + 4 + 32; // length, type, count, hash
+        var writer = new ArrayBufferWriter<byte>();
+        Serialize(snapshot, sequence, writer);
+        stream.Write(writer.WrittenSpan);
+    }
+
+    private static void Serialize(IList<ChangeOperation> operations, long sequence, IBufferWriter<byte> writer)
+    {
+        int bytesRequired = 4 + 1 + 8 + 4 + 32; // length, type, seq, count, hash
         for (int i = 0; i < operations.Count; i++)
         {
             bytesRequired += 1; // Type
@@ -136,9 +174,10 @@ public partial class KeyValueStore
         var span = writer.GetSpan(bytesRequired)[..bytesRequired];
         var dest = span;
         BitConverter.TryWriteBytes(dest, bytesRequired - 4);
-        dest[4] = 1; // type
-        BitConverter.TryWriteBytes(dest[5..], operations.Count);
-        dest = dest[9..];
+        dest[4] = (byte)Log.LogEntryType.ChangeOperation;
+        BitConverter.TryWriteBytes(dest[5..], sequence);
+        BitConverter.TryWriteBytes(dest[13..], operations.Count);
+        dest = dest[17..];
 
         for (int i = 0; i < operations.Count; i++)
         {
@@ -167,5 +206,31 @@ public partial class KeyValueStore
 
         SHA256.HashData(span[..^32], span[^32..]);
         writer.Advance(bytesRequired);
+    }
+
+    private static void Serialize(ImmutableAvlTree<Mem, Mem> snapshot, long sequence, IBufferWriter<byte> writer)
+    {
+        int bytesRequired = 4 + 1 + 8 + 32; // length, type, seq, hash
+        foreach (var entry in snapshot)
+        {
+            bytesRequired += entry.Key.Length + entry.Value.Length + 8; // key, value, lengths
+        }
+
+        var span = writer.GetSpan(bytesRequired)[..bytesRequired];
+        var dest = span;
+        BitConverter.TryWriteBytes(dest, bytesRequired - 4);
+        dest[4] = (byte)Log.LogEntryType.Snapshot;
+        BitConverter.TryWriteBytes(dest[5..], sequence);
+        dest = dest[13..];
+        foreach (var entry in snapshot)
+        {
+            BitConverter.TryWriteBytes(dest, entry.Key.Length);
+            dest = dest[4..];
+            entry.Key.Span.CopyTo(dest);
+            dest = dest[entry.Key.Length..];
+            BitConverter.TryWriteBytes(dest, entry.Value.Length);
+            dest = dest[4..];
+            entry.Value.Span.CopyTo(dest);
+        }
     }
 }
