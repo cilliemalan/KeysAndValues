@@ -178,6 +178,43 @@ public class DictionaryBenchmarks : DataFixture
 
 
 
+
+    [Benchmark]
+    public void EnumerateImmutableSortedDictionary()
+    {
+        immutableSortedDictionary.Count();
+    }
+
+    [Benchmark]
+    public void EnumerateDictionary()
+    {
+        dictionary.Count();
+        dictionary.Count();
+    }
+
+    [Benchmark]
+    public void EnumerateSortedDictionary()
+    {
+        sortedDictionary.Count();
+        sortedDictionary.Count();
+    }
+
+    [Benchmark]
+    public void EnumerateImmutableDictionary()
+    {
+        immutableDictionary.Count();
+        immutableDictionary.Count();
+    }
+
+    [Benchmark]
+    public void EnumerateImmutableAvlTree()
+    {
+        immutableAvlTree.Count();
+        immutableAvlTree.Count();
+    }
+
+
+
     // write operations
 
     [Benchmark]
