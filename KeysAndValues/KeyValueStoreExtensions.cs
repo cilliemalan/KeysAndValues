@@ -1,7 +1,4 @@
-﻿using System.Buffers;
-using System.Text;
-
-namespace KeysAndValues;
+﻿namespace KeysAndValues;
 
 public static class KeyValueStoreExtensions
 {

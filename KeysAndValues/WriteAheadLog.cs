@@ -1,44 +1,37 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace KeysAndValues;
 
-namespace KeysAndValues
+public class WriteAheadLog
 {
-    public class WriteAheadLog
+    string fileName;
+
+    public WriteAheadLog(string fileName)
     {
-        string fileName;
+        this.fileName = fileName;
+        Open(fileName);
+    }
 
-        public WriteAheadLog(string fileName)
+    private static Stream Open(string fileName)
+    {
+        var fi = new FileInfo(fileName);
+        var fibak = new FileInfo($"{fileName}.bak");
+        if (fibak.Exists)
         {
-            this.fileName = fileName;
-            Open(fileName);
+            return OpenFromBackup(fi, fibak);
         }
 
-        private static Stream Open(string fileName)
+        var fs = fi.Open(FileMode.Append, FileAccess.ReadWrite, FileShare.Read);
+        try
         {
-            var fi = new FileInfo(fileName);
-            var fibak = new FileInfo($"{fileName}.bak");
-            if (fibak.Exists)
-            {
-                return OpenFromBackup(fi, fibak);
-            }
-
-            var fs = fi.Open(FileMode.Append, FileAccess.ReadWrite, FileShare.Read);
-            try
-            {
-                return fs;
-            }
-            catch (Exception)
-            {
-                throw;
-            }
+            return fs;
         }
-
-        private static Stream OpenFromBackup(FileInfo fi, FileInfo fibak)
+        catch (Exception)
         {
-            throw new NotImplementedException();
+            throw;
         }
+    }
+
+    private static Stream OpenFromBackup(FileInfo fi, FileInfo fibak)
+    {
+        throw new NotImplementedException();
     }
 }

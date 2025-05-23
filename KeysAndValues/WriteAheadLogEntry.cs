@@ -1,6 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-
-namespace KeysAndValues;
+﻿namespace KeysAndValues;
 
 public readonly struct WriteAheadLogEntry: IComparable<WriteAheadLogEntry>, IEquatable<WriteAheadLogEntry>
 {

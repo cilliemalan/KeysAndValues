@@ -1,12 +1,5 @@
-﻿using KeysAndValues.Internal;
-using System.Buffers;
-using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
-using System.IO.Compression;
+﻿namespace KeysAndValues;
 using System.Security.Cryptography;
-using System.Xml.Serialization;
-
-namespace KeysAndValues;
 
 public partial class KeyValueStore
 {

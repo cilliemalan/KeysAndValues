@@ -1,6 +1,4 @@
-﻿using System.Buffers;
-
-namespace KeysAndValues.Internal;
+﻿namespace KeysAndValues.Internal;
 
 /// <summary>
 /// A buffer writer that creates segments of memory as required

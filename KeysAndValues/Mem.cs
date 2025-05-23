@@ -1,8 +1,4 @@
-﻿using KeysAndValues.Internal;
-using System.Numerics;
-using System.Text;
-
-namespace KeysAndValues;
+﻿namespace KeysAndValues;
 
 /// <summary>
 /// Mem represents a pinned region of memory. Underneath it has a pointer and length.
@@ -76,13 +72,13 @@ public unsafe readonly struct Mem : IEquatable<Mem>, IComparable<Mem>
         uint index = 0;
         while (index + 4 <= l)
         {
-            hash = BitOperations.RotateLeft(hash + ((uint*)data)[index / 4] * 3266489917U, 17) * 668265263U;
+            hash = System.Numerics.BitOperations.RotateLeft(hash + ((uint*)data)[index / 4] * 3266489917U, 17) * 668265263U;
             index += 4;
         }
 
         while (index < l)
         {
-            hash = BitOperations.RotateLeft(hash + data[index] * 2654435761U, 13) * 2246822519U;
+            hash = System.Numerics.BitOperations.RotateLeft(hash + data[index] * 2654435761U, 13) * 2246822519U;
             index++;
         }
 
@@ -94,8 +90,8 @@ public unsafe readonly struct Mem : IEquatable<Mem>, IComparable<Mem>
     public static implicit operator ReadOnlySpan<byte>(in Mem mem) => mem.memory.Span;
     public static implicit operator ReadOnlyMemory<byte>(in Mem mem) => mem.memory;
     public static implicit operator Mem(in ReadOnlyMemory<byte> mem) => new(mem);
-    public static implicit operator Mem(string mem) => new(StringToBytesConversion.GetBytes(mem));
-    public static implicit operator string(Mem mem) => StringToBytesConversion.GetString(mem);
+    public static implicit operator Mem(string mem) => new(Internal.StringToBytesConversion.GetBytes(mem));
+    public static implicit operator string(Mem mem) => Internal.StringToBytesConversion.GetString(mem);
 
     public static bool operator ==(Mem left, Mem right) => left.Equals(right);
     public static bool operator !=(Mem left, Mem right) => !(left == right);
