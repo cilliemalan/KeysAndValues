@@ -194,4 +194,31 @@ public static class KeyValueStoreExtensions
     {
         return store.Apply([new() { Type = ChangeOperationType.Set, Key = key.ToArray(), Value = default }]);
     }
+
+    public static void Apply(this ImmutableAvlTree<Mem, Mem>.Builder builder, ChangeOperation[] operations)
+    {
+        for (int i = 0; i < operations.Length; i++)
+        {
+            var operation = operations[i];
+
+            switch (operation.Type)
+            {
+                case ChangeOperationType.Set:
+                    builder[operation.Key] = operation.Value;
+                    break;
+                case ChangeOperationType.Delete:
+                    builder.Remove(operation.Key);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(operations));
+            }
+        }
+    }
+
+    public static ImmutableAvlTree<Mem, Mem> Apply(this ImmutableAvlTree<Mem, Mem> store, ChangeOperation[] operations)
+    {
+        var builder = store.ToBuilder();
+        builder.Apply(operations);
+        return builder.ToImmutable();
+    }
 }

@@ -8,21 +8,18 @@ namespace KeysAndValues;
 public sealed partial class KeyValueStore : IEnumerable<KeyValuePair<Mem, Mem>>
 {
     private readonly SpinLock spinLock = new();
-    private readonly Log? log;
+    private readonly IWriteAheadLog? log;
     private long sequence;
     private ImmutableAvlTree<Mem, Mem> store = ImmutableAvlTree<Mem, Mem>.Empty;
 
     public bool FlushWalAfterEachWrite { get; set; } = false;
 
-    private KeyValueStore(Stream? writeAheadLogStream)
+    private KeyValueStore(IWriteAheadLog? writeAheadLog)
     {
-        if (writeAheadLogStream is not null)
-        {
-            log = new(writeAheadLogStream);
-        }
+        log = writeAheadLog;
     }
 
-    public static KeyValueStore CreateEmpty(Stream? writeAheadLog) => new(writeAheadLog);
+    public static KeyValueStore CreateEmpty(IWriteAheadLog? writeAheadLog) => new(writeAheadLog);
 
     public bool TryGet(Mem key, out Mem value)
     {
@@ -43,8 +40,6 @@ public sealed partial class KeyValueStore : IEnumerable<KeyValuePair<Mem, Mem>>
             {
                 var s = store;
 
-                var builder = CreateAppliedStore(operations, s);
-
                 bool spinLockTaken = false;
                 spinLock.TryEnter(ref spinLockTaken);
                 if (!spinLockTaken)
@@ -54,7 +49,8 @@ public sealed partial class KeyValueStore : IEnumerable<KeyValuePair<Mem, Mem>>
                     continue;
                 }
 
-                bool exchanged = Interlocked.CompareExchange(ref store, builder.ToImmutable(), s) == s;
+                var newStore = s.Apply(operations);
+                bool exchanged = Interlocked.CompareExchange(ref store, newStore, s) == s;
                 if (!exchanged)
                 {
                     spinLock.Exit();
@@ -76,44 +72,15 @@ public sealed partial class KeyValueStore : IEnumerable<KeyValuePair<Mem, Mem>>
         {
             if (mustFlushAndExit)
             {
-                log!.Flush();
+                _ = log!.FlushAsync(default);
                 Monitor.Exit(log);
             }
         }
     }
 
-    private static ImmutableAvlTree<Mem, Mem>.Builder CreateAppliedStore(ChangeOperation[] operations, ImmutableAvlTree<Mem, Mem> s)
-    {
-        var b = s.ToBuilder();
-        ApplyToBuilder(operations, b);
-
-        return b;
-    }
-
-    private static void ApplyToBuilder(ChangeOperation[] operations, ImmutableAvlTree<Mem, Mem>.Builder builder)
-    {
-        for (int i = 0; i < operations.Length; i++)
-        {
-            var operation = operations[i];
-
-            switch (operation.Type)
-            {
-                case ChangeOperationType.Set:
-                    builder[operation.Key] = operation.Value;
-                    break;
-                case ChangeOperationType.Delete:
-                    builder.Remove(operation.Key);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(operations));
-            }
-        }
-    }
-
-
     public void FlushWriteAheadLog()
     {
-        log?.Flush();
+        _ = log?.FlushAsync(default);
     }
 
     public Task FlushWriteAheadLogAsync(CancellationToken cancellationToken = default)
