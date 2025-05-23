@@ -1,7 +1,6 @@
-﻿using System.ComponentModel;
-using System.Diagnostics;
+﻿using KeysAndValues.Internal;
 using System.Numerics;
-using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace KeysAndValues;
 
@@ -94,7 +93,10 @@ public unsafe readonly struct Mem : IEquatable<Mem>, IComparable<Mem>
 
     public static implicit operator ReadOnlySpan<byte>(in Mem mem) => mem.memory.Span;
     public static implicit operator ReadOnlyMemory<byte>(in Mem mem) => mem.memory;
-    public static implicit operator Mem(ReadOnlyMemory<byte> mem) => new(mem);
+    public static implicit operator Mem(in ReadOnlyMemory<byte> mem) => new(mem);
+    public static implicit operator Mem(string mem) => new(StringToBytesConversion.GetBytes(mem));
+    public static implicit operator string(Mem mem) => StringToBytesConversion.GetString(mem);
+
     public static bool operator ==(Mem left, Mem right) => left.Equals(right);
     public static bool operator !=(Mem left, Mem right) => !(left == right);
     public static bool operator <(Mem left, Mem right) => left.CompareTo(right) < 0;

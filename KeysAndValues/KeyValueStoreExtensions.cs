@@ -5,6 +5,35 @@ namespace KeysAndValues;
 
 public static class KeyValueStoreExtensions
 {
+    public static string Get(this KeyValueStore store, string key)
+    {
+        Mem kmem = key;
+        if (store.TryGet(kmem, out var vmem))
+        {
+            return vmem;
+        }
+        throw new KeyNotFoundException($"Key '{key}' not found in the store.");
+    }
+
+    public static Mem Get(this KeyValueStore store, Mem mem)
+    {
+        if (store.TryGet(mem, out var value))
+        {
+            return value;
+        }
+        throw new KeyNotFoundException($"Key not found in the store.");
+    }
+
+    public static long Set(this KeyValueStore store, Mem key, Mem value)
+    {
+        return store.Apply([new()
+        {
+            Type = ChangeOperationType.Set,
+            Key = key,
+            Value = value
+        }]);
+    }
+
     public static long Set(this KeyValueStore store, IEnumerable<KeyValuePair<string, string>> items)
     {
         if (items is not ICollection<KeyValuePair<string, string>> collection)
@@ -21,11 +50,11 @@ public static class KeyValueStoreExtensions
         }
 
         var mem = ArrayPool<byte>.Shared.Rent(dataLen);
+        var ops = ArrayPool<ChangeOperation>.Shared.Rent(collection.Count);
         try
         {
             var mspan = mem.AsSpan();
 
-            var ops = new ChangeOperation[collection.Count];
             var index = 0;
             var dindex = 0;
             foreach (var item in collection)
@@ -52,6 +81,7 @@ public static class KeyValueStoreExtensions
         }
         finally
         {
+            ArrayPool<ChangeOperation>.Shared.Return(ops);
             ArrayPool<byte>.Shared.Return(mem);
         }
     }
@@ -70,11 +100,11 @@ public static class KeyValueStoreExtensions
         }
 
         var mem = ArrayPool<byte>.Shared.Rent(dataLen);
+        var ops = ArrayPool<ChangeOperation>.Shared.Rent(ckeys.Count);
         try
         {
             var mspan = mem.AsSpan();
 
-            var ops = new ChangeOperation[ckeys.Count];
             var index = 0;
             var dindex = 0;
             foreach (var key in ckeys)
@@ -95,29 +125,9 @@ public static class KeyValueStoreExtensions
         }
         finally
         {
+            ArrayPool<ChangeOperation>.Shared.Return(ops);
             ArrayPool<byte>.Shared.Return(mem);
         }
-    }
-
-    public static long Set(this KeyValueStore store, string key, string value)
-    {
-        ArgumentNullException.ThrowIfNull(key);
-        ArgumentNullException.ThrowIfNull(value);
-        if (key.Length == 0)
-        {
-            throw new ArgumentException($"'{nameof(key)}' cannot be null or empty.", nameof(key));
-        }
-
-        Span<byte> mkey;
-        Span<byte> mval;
-        var kl = Encoding.UTF8.GetByteCount(key);
-        var vl = Encoding.UTF8.GetByteCount(value);
-        using var m = MemoryPool<byte>.Shared.Rent(kl + vl);
-        mkey = m.Memory.Span[..kl];
-        mval = m.Memory.Span[kl..];
-        Encoding.UTF8.GetBytes(key, mkey);
-        Encoding.UTF8.GetBytes(value, mval);
-        return store.Set(mkey, mval);
     }
 
     public static long Delete(this KeyValueStore store, string key)
@@ -147,14 +157,12 @@ public static class KeyValueStoreExtensions
         key.CopyTo(mem);
         value.CopyTo(mem.AsSpan(key.Length));
 
-        ChangeOperation[] ops = [new()
+        return store.Apply([new()
         {
             Type = ChangeOperationType.Set,
             Key = new(mem, 0, key.Length),
             Value = value.Length > 0 ? new(mem, key.Length, value.Length) : default
-        }];
-
-        return store.Apply(ops);
+        }]);
     }
 
     public static long Set(this KeyValueStore store, IEnumerable<KeyValuePair<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>>> entries)
@@ -170,19 +178,26 @@ public static class KeyValueStoreExtensions
             return Set(store, entries.ToList());
         }
 
-        var ops = new ChangeOperation[len];
-        var index = 0;
-        foreach (var entry in entries)
+        var ops = ArrayPool<ChangeOperation>.Shared.Rent(len);
+        try
         {
-            ops[index++] = new()
+            var index = 0;
+            foreach (var entry in entries)
             {
-                Type = ChangeOperationType.Set,
-                Key = entry.Key,
-                Value = entry.Value
-            };
-        }
+                ops[index++] = new()
+                {
+                    Type = ChangeOperationType.Set,
+                    Key = entry.Key,
+                    Value = entry.Value
+                };
+            }
 
-        return store.Apply(ops);
+            return store.Apply(ops);
+        }
+        finally
+        {
+            ArrayPool<ChangeOperation>.Shared.Return(ops);
+        }
     }
 
     public static long Set(this KeyValueStore store, ReadOnlyMemory<byte> key, ReadOnlyMemory<byte> value)
@@ -195,7 +210,7 @@ public static class KeyValueStoreExtensions
         return store.Apply([new() { Type = ChangeOperationType.Set, Key = key.ToArray(), Value = default }]);
     }
 
-    public static void Apply(this ImmutableAvlTree<Mem, Mem>.Builder builder, ChangeOperation[] operations)
+    public static void Apply(this ImmutableAvlTree<Mem, Mem>.Builder builder, ReadOnlySpan<ChangeOperation> operations)
     {
         for (int i = 0; i < operations.Length; i++)
         {
@@ -215,10 +230,26 @@ public static class KeyValueStoreExtensions
         }
     }
 
-    public static ImmutableAvlTree<Mem, Mem> Apply(this ImmutableAvlTree<Mem, Mem> store, ChangeOperation[] operations)
+    public static ImmutableAvlTree<Mem, Mem> Apply(this ImmutableAvlTree<Mem, Mem> store, ReadOnlySpan<ChangeOperation> operations)
     {
         var builder = store.ToBuilder();
         builder.Apply(operations);
         return builder.ToImmutable();
+    }
+
+    public static IEnumerable<KeyValuePair<Mem, Mem>> Enumerate(this KeyValueStore store) => store.Snapshot();
+    public static IEnumerable<Mem> Keys(this KeyValueStore store) => store.Snapshot().Keys;
+    public static IEnumerable<Mem> Values(this KeyValueStore store) => store.Snapshot().Values;
+
+    public static IEnumerable<KeyValuePair<Mem, Mem>> Enumerate(this KeyValueStore store, Mem fromKeyInclusive, Mem toKeyExclusive)
+    {
+        var k = store.Snapshot();
+        if (toKeyExclusive.IsEmpty)
+        {
+            // the "default" Mem will always sort before the first entry in the database
+            return k.Range(fromKeyInclusive);
+        }
+
+        return k.Range(fromKeyInclusive, toKeyExclusive);
     }
 }

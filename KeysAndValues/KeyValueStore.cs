@@ -1,16 +1,19 @@
 ﻿using KeysAndValues.Internal;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 
 namespace KeysAndValues;
 
-public sealed partial class KeyValueStore : IEnumerable<KeyValuePair<Mem, Mem>>
+public sealed partial class KeyValueStore
 {
-    private readonly SpinLock spinLock = new();
+    private SpinLock spinLock = new();
     private readonly IWriteAheadLog? log;
     private long sequence;
     private ImmutableAvlTree<Mem, Mem> store = ImmutableAvlTree<Mem, Mem>.Empty;
+
+    public int Count => store.Count;
 
     public bool FlushWalAfterEachWrite { get; set; } = false;
 
@@ -19,14 +22,27 @@ public sealed partial class KeyValueStore : IEnumerable<KeyValuePair<Mem, Mem>>
         log = writeAheadLog;
     }
 
-    public static KeyValueStore CreateEmpty(IWriteAheadLog? writeAheadLog) => new(writeAheadLog);
+    public static KeyValueStore CreateEmpty()
+        => new(null);
+
+    public static KeyValueStore CreateNewFrom(IEnumerable<KeyValuePair<Mem, Mem>> source)
+    {
+        return new KeyValueStore(null)
+        {
+            store = ImmutableAvlTree<Mem, Mem>.Empty.AddRange(source, true, false),
+            sequence = 1// shrug
+        };
+    }
+
+    public static KeyValueStore CreateEmptyWithWriteAhead(IWriteAheadLog writeAheadLog)
+        => new(writeAheadLog ?? throw new ArgumentNullException(nameof(writeAheadLog)));
 
     public bool TryGet(Mem key, out Mem value)
     {
         return store.TryGetValue(key, out value);
     }
 
-    public long Apply(ChangeOperation[] operations)
+    public long Apply(ReadOnlySpan<ChangeOperation> operations)
     {
         bool mustFlushAndExit = false;
         if (FlushWalAfterEachWrite && log is not null)
@@ -78,39 +94,19 @@ public sealed partial class KeyValueStore : IEnumerable<KeyValuePair<Mem, Mem>>
         }
     }
 
-    public void FlushWriteAheadLog()
-    {
-        _ = log?.FlushAsync(default);
-    }
+    public long Sequence => sequence;
 
-    public Task FlushWriteAheadLogAsync(CancellationToken cancellationToken = default)
-    {
-        return log?.FlushAsync(cancellationToken) ?? Task.CompletedTask;
-    }
+    public ImmutableAvlTree<Mem, Mem> Snapshot() => store;
 
-
-    public (long Sequence, IReadOnlyDictionary<Mem, Mem> Store) Snapshot()
+    public ImmutableAvlTree<Mem, Mem> Snapshot(out long sequence)
     {
-        ForceTakeSpinlock();
-        var sequence = this.sequence;
+        bool taken = false;
+        spinLock.Enter(ref taken);
+        Debug.Assert(taken);
+        sequence = this.sequence;
         var store = this.store;
         spinLock.Exit();
 
-        return (sequence, store);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ForceTakeSpinlock()
-    {
-        for (; ; )
-        {
-            bool taken = false;
-            spinLock.Enter(ref taken);
-            if (taken)
-            {
-                break;
-            }
-            Thread.Yield();
-        }
+        return store;
     }
 }

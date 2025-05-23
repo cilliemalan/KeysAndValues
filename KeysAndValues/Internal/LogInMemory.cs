@@ -7,6 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
+using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace KeysAndValues.Internal
 {
@@ -37,9 +39,9 @@ namespace KeysAndValues.Internal
             return new(log);
         }
 
-        public void Append(ChangeOperation[] operations, long sequence)
+        public void Append(ReadOnlySpan<ChangeOperation> operations, long sequence)
         {
-            log = log.Add(new() { Sequence = sequence, ChangeOperations = operations });
+            log = log.Add(new() { Sequence = sequence, ChangeOperations = [..operations] });
         }
 
         public void AppendSnapshot(ImmutableAvlTree<Mem, Mem> snapshot, long sequence)

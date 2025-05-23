@@ -12,7 +12,7 @@ namespace KeysAndValues
     /// </summary>
     public interface IWriteAheadLog
     {
-        public void Append(ChangeOperation[] operations, long sequence);
+        public void Append(ReadOnlySpan<ChangeOperation> operations, long sequence);
         public void AppendSnapshot(ImmutableAvlTree<Mem, Mem> snapshot, long sequence);
         public Task FlushAsync(CancellationToken cancellationToken);
         public ImmutableAvlTree<Mem, Mem>? GetSnapshot(long sequence);
