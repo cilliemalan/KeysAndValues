@@ -34,116 +34,43 @@ public static class KeyValueStoreExtensions
         }]);
     }
 
-    public static long Set(this KeyValueStore store, IEnumerable<KeyValuePair<string, string>> items)
+    public static long Delete(this KeyValueStore store, IEnumerable<Mem> keys)
     {
-        if (items is not ICollection<KeyValuePair<string, string>> collection)
-        {
-            return Set(store, items.ToList());
-        }
-
-        int dataLen = 0;
-        foreach (var item in collection)
-        {
-            var kl = Encoding.UTF8.GetByteCount(item.Key);
-            var vl = Encoding.UTF8.GetByteCount(item.Value);
-            dataLen += kl + vl;
-        }
-
-        var mem = ArrayPool<byte>.Shared.Rent(dataLen);
-        var ops = ArrayPool<ChangeOperation>.Shared.Rent(collection.Count);
+        int nkeys = 0;
+        int nkcap = keys is ICollection<Mem> ckeys ? ckeys.Count : 1;
+        ChangeOperation[] ops = ArrayPool<ChangeOperation>.Shared.Rent(nkcap);
         try
         {
-            var mspan = mem.AsSpan();
-
-            var index = 0;
-            var dindex = 0;
-            foreach (var item in collection)
+            foreach (var k in keys)
             {
-                var kl = Encoding.UTF8.GetByteCount(item.Key);
-                var vl = Encoding.UTF8.GetByteCount(item.Value);
-                var ks = dindex;
-                dindex += kl;
-                var vs = dindex;
-                dindex += vl;
-                var mkey = mspan.Slice(ks, kl);
-                var mval = mspan.Slice(vs, vl);
-                Encoding.UTF8.GetBytes(item.Key, mkey);
-                Encoding.UTF8.GetBytes(item.Value, mval);
-                ops[index++] = new()
+                if (nkeys >= ops.Length)
                 {
-                    Type = ChangeOperationType.Set,
-                    Key = new(mem, ks, kl),
-                    Value = new(mem, vs, vl)
-                };
-            }
+                    ArrayPool<ChangeOperation>.Shared.Return(ops);
+                    ops = ArrayPool<ChangeOperation>.Shared.Rent(nkeys + nkeys / 2 + 1);
+                }
 
-            return store.Apply(ops);
-        }
-        finally
-        {
-            ArrayPool<ChangeOperation>.Shared.Return(ops);
-            ArrayPool<byte>.Shared.Return(mem);
-        }
-    }
-
-    public static long Delete(this KeyValueStore store, IEnumerable<string> keys)
-    {
-        if (keys is not ICollection<string> ckeys)
-        {
-            return Delete(store, keys.ToList());
-        }
-
-        int dataLen = 0;
-        foreach (var key in ckeys)
-        {
-            dataLen += Encoding.UTF8.GetByteCount(key);
-        }
-
-        var mem = ArrayPool<byte>.Shared.Rent(dataLen);
-        var ops = ArrayPool<ChangeOperation>.Shared.Rent(ckeys.Count);
-        try
-        {
-            var mspan = mem.AsSpan();
-
-            var index = 0;
-            var dindex = 0;
-            foreach (var key in ckeys)
-            {
-                var kl = Encoding.UTF8.GetByteCount(key);
-                var ks = dindex;
-                dindex += kl;
-                var mkey = mspan.Slice(ks, kl);
-                Encoding.UTF8.GetBytes(key, mkey);
-                ops[index++] = new()
+                ops[nkeys++] = new()
                 {
                     Type = ChangeOperationType.Delete,
-                    Key = new(mem, ks, kl),
+                    Key = k
                 };
             }
 
-            return store.Apply(ops);
+            return store.Apply(ops.AsSpan(..nkeys));
         }
         finally
         {
             ArrayPool<ChangeOperation>.Shared.Return(ops);
-            ArrayPool<byte>.Shared.Return(mem);
         }
     }
 
-    public static long Delete(this KeyValueStore store, string key)
+    public static long Delete(this KeyValueStore store, Mem key)
     {
-        ArgumentNullException.ThrowIfNull(key);
-        if (key.Length == 0)
+        return store.Apply([new()
         {
-            throw new ArgumentException($"'{nameof(key)}' cannot be null or empty.", nameof(key));
-        }
-
-        Span<byte> mkey;
-        var kl = Encoding.UTF8.GetByteCount(key);
-        using var m = MemoryPool<byte>.Shared.Rent(kl);
-        mkey = m.Memory.Span[..kl];
-        Encoding.UTF8.GetBytes(key, mkey);
-        return store.Delete(mkey);
+            Type = ChangeOperationType.Delete,
+            Key = key
+        }]);
     }
 
     public static long Set(this KeyValueStore store, ReadOnlySpan<byte> key, ReadOnlySpan<byte> value)
@@ -165,26 +92,22 @@ public static class KeyValueStoreExtensions
         }]);
     }
 
-    public static long Set(this KeyValueStore store, IEnumerable<KeyValuePair<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>>> entries)
+    public static long Set(this KeyValueStore store, IEnumerable<KeyValuePair<Mem, Mem>> entries)
     {
-        var len = (entries as System.Collections.ICollection)?.Count ?? -1;
-        if (len == 0)
-        {
-            return store.Apply([]);
-        }
-
-        if (len < 0)
-        {
-            return Set(store, entries.ToList());
-        }
-
-        var ops = ArrayPool<ChangeOperation>.Shared.Rent(len);
+        int nkeys = 0;
+        int nkcap = entries is ICollection<KeyValuePair<Mem, Mem>> kc ? kc.Count: 1;
+        var ops = ArrayPool<ChangeOperation>.Shared.Rent(nkcap);
         try
         {
-            var index = 0;
             foreach (var entry in entries)
             {
-                ops[index++] = new()
+                if (nkeys >= ops.Length)
+                {
+                    ArrayPool<ChangeOperation>.Shared.Return(ops);
+                    ops = ArrayPool<ChangeOperation>.Shared.Rent(nkeys + nkeys / 2 + 1);
+                }
+
+                ops[nkeys++] = new()
                 {
                     Type = ChangeOperationType.Set,
                     Key = entry.Key,
@@ -192,7 +115,7 @@ public static class KeyValueStoreExtensions
                 };
             }
 
-            return store.Apply(ops);
+            return store.Apply(ops.AsSpan(..nkeys));
         }
         finally
         {
