@@ -216,4 +216,52 @@ public class BasicOperationTests
         Assert.Equal(["a", "b", "c", "d", "e", "f", "g", "h"], [.. kvs.Keys().Select(a => (string)a)]);
         Assert.Equal(["1", "2", "3", "4", "5", "6", "7", "8"], [.. kvs.Values().Select(a => (string)a)]);
     }
+
+    [Fact]
+    public void SetMultipleWithOverlapTest()
+    {
+        var kvs = KeyValueStore.CreateNewFrom(new Dictionary<Mem, Mem>
+        {
+            ["a"] = "1",
+            ["b"] = "2",
+            ["c"] = "3",
+            ["d"] = "4",
+        });
+        kvs.Set(new Dictionary<Mem, Mem>
+        {
+            ["c"] = "5",
+            ["d"] = "6",
+            ["e"] = "7",
+            ["f"] = "8",
+        });
+        Assert.Equal(6, kvs.Count);
+        Assert.Equal(2, kvs.Sequence);
+        Assert.Equal(["a", "b", "c", "d", "e", "f"], [.. kvs.Keys().Select(a => (string)a)]);
+        Assert.Equal(["1", "2", "5", "6", "7", "8"], [.. kvs.Values().Select(a => (string)a)]);
+    }
+
+    [Fact]
+    public void SetMultipleWithOverlapAndRepeatsTest()
+    {
+        var kvs = KeyValueStore.CreateNewFrom(new Dictionary<Mem, Mem>
+        {
+            ["a"] = "1",
+            ["b"] = "2",
+            ["c"] = "3",
+            ["d"] = "4",
+        });
+        kvs.Set(
+        [
+            new("c", "5"),
+            new("d", "6"),
+            new("e", "7"),
+            new("f", "8"),
+            new("c", "9"),
+            new("d", "0"),
+        ]);
+        Assert.Equal(6, kvs.Count);
+        Assert.Equal(2, kvs.Sequence);
+        Assert.Equal(["a", "b", "c", "d", "e", "f"], [.. kvs.Keys().Select(a => (string)a)]);
+        Assert.Equal(["1", "2", "9", "0", "7", "8"], [.. kvs.Values().Select(a => (string)a)]);
+    }
 }

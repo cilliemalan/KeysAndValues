@@ -1,10 +1,4 @@
-﻿using KeysAndValues.Internal;
-using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Globalization;
-using System.Runtime.CompilerServices;
-
-namespace KeysAndValues;
+﻿namespace KeysAndValues;
 
 public sealed partial class KeyValueStore
 {
