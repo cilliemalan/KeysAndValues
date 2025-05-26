@@ -35,7 +35,7 @@ public class Sha256Tests
         // Arrange
         var sha256 = new Sha256(stackalloc uint[24]);
         byte[] input = Encoding.UTF8.GetBytes(""); // Empty string
-        byte[] expectedHash = HexToByteArray("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+        byte[] expectedHash = SHA256.HashData([]);
         byte[] actualHash = new byte[32];
 
         // Act
