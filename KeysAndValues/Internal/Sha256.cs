@@ -34,6 +34,8 @@ public ref struct Sha256
     private int _bufferLength; // Number of bytes currently in _buffer
     private int _totalBytes; // Total number of bytes ingested
 
+    public readonly int TotalBytes => _totalBytes;
+
     public Sha256(Span<uint> buffer)
     {
         if (buffer.Length < 24)
