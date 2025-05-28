@@ -1,12 +1,28 @@
-﻿namespace KeysAndValues;
+﻿using System.ComponentModel;
+
+namespace KeysAndValues;
 
 public sealed partial class KeyValueStore
 {
+    public delegate void ChangeHandler(
+        KeyValueStore keyValueStore, 
+        in ReadOnlySpan<ChangeOperation> operations,
+        long newSequence,
+        ImmutableAvlTree<Mem, Mem> store);
+
     private SpinLock spinLock = new();
     private long sequence;
     private ImmutableAvlTree<Mem, Mem> store = ImmutableAvlTree<Mem, Mem>.Empty;
 
     public int Count => store.Count;
+
+    /// <summary>
+    /// Called whenever the store changes. Handlers
+    /// must not block, as it is called while
+    /// a spinlock is held.
+    /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public event ChangeHandler? Changed;
 
     private KeyValueStore()
     {
@@ -54,10 +70,16 @@ public sealed partial class KeyValueStore
             // NOTE: Using interlocked because I don't believe the spinlock
             // will do a memory barrier.
             var newSequence = Interlocked.Increment(ref sequence);
-            // logAppend here
-
-            spinLock.Exit();
-
+            
+            try
+            {
+                Changed?.Invoke(this, operations, newSequence, newStore);
+            }
+            finally
+            {
+                spinLock.Exit();
+            }
+            
             return newSequence;
         }
     }
