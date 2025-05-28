@@ -3,33 +3,26 @@
 public sealed partial class KeyValueStore
 {
     private SpinLock spinLock = new();
-    private readonly IWriteAheadLog? log;
     private long sequence;
     private ImmutableAvlTree<Mem, Mem> store = ImmutableAvlTree<Mem, Mem>.Empty;
 
     public int Count => store.Count;
 
-    public bool FlushWalAfterEachWrite { get; set; } = false;
-
-    private KeyValueStore(IWriteAheadLog? writeAheadLog)
+    private KeyValueStore()
     {
-        log = writeAheadLog;
     }
 
     public static KeyValueStore CreateEmpty()
-        => new(null);
+        => new();
 
     public static KeyValueStore CreateNewFrom(IEnumerable<KeyValuePair<Mem, Mem>> source)
     {
-        return new KeyValueStore(null)
+        return new()
         {
             store = ImmutableAvlTree<Mem, Mem>.Empty.AddRange(source, true, false),
-            sequence = 1// shrug
+            sequence = 1 // shrug
         };
     }
-
-    public static KeyValueStore CreateEmptyWithWriteAhead(IWriteAheadLog writeAheadLog)
-        => new(writeAheadLog ?? throw new ArgumentNullException(nameof(writeAheadLog)));
 
     public bool TryGet(Mem key, out Mem value)
     {
@@ -38,53 +31,34 @@ public sealed partial class KeyValueStore
 
     public long Apply(ReadOnlySpan<ChangeOperation> operations)
     {
-        bool mustFlushAndExit = false;
-        if (FlushWalAfterEachWrite && log is not null)
+        for (; ; )
         {
-            Monitor.Enter(log, ref mustFlushAndExit);
-        }
+            var s = store;
 
-        try
-        {
-            for (; ; )
+            bool spinLockTaken = false;
+            spinLock.TryEnter(ref spinLockTaken);
+            if (!spinLockTaken)
             {
-                var s = store;
+                Thread.Yield();
+                continue;
+            }
 
-                bool spinLockTaken = false;
-                spinLock.TryEnter(ref spinLockTaken);
-                if (!spinLockTaken)
-                {
-                    Debug.Assert(!FlushWalAfterEachWrite);
-                    Thread.Yield();
-                    continue;
-                }
-
-                var newStore = s.Apply(operations);
-                bool exchanged = Interlocked.CompareExchange(ref store, newStore, s) == s;
-                if (!exchanged)
-                {
-                    spinLock.Exit();
-                    Debug.Assert(!FlushWalAfterEachWrite);
-                    continue;
-                }
-
-                // NOTE: Using interlocked because I don't believe the spinlock
-                // will do a memory barrier.
-                var newSequence = Interlocked.Increment(ref sequence);
-                log?.Append(operations, newSequence);
-
+            var newStore = s.Apply(operations);
+            bool exchanged = Interlocked.CompareExchange(ref store, newStore, s) == s;
+            if (!exchanged)
+            {
                 spinLock.Exit();
+                continue;
+            }
 
-                return newSequence;
-            }
-        }
-        finally
-        {
-            if (mustFlushAndExit)
-            {
-                _ = log!.FlushAsync(default);
-                Monitor.Exit(log);
-            }
+            // NOTE: Using interlocked because I don't believe the spinlock
+            // will do a memory barrier.
+            var newSequence = Interlocked.Increment(ref sequence);
+            // logAppend here
+
+            spinLock.Exit();
+
+            return newSequence;
         }
     }
 
