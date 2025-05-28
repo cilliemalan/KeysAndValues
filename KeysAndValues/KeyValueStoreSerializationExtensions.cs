@@ -1,4 +1,5 @@
 ﻿using KeysAndValues.Internal;
+using System.Security.Cryptography;
 
 namespace KeysAndValues;
 
@@ -8,28 +9,34 @@ public static class KeyValueStoreSerializationExtensions
     {
         var snap = store.Snapshot(out var sequence);
 
-        Sha256 hash = new(stackalloc uint[24]);
-        Span<byte> tmp = stackalloc byte[32];
+        using var sha = SHA256.Create();
+        byte[] tmpa = ArrayPool<byte>.Shared.Rent(32);
+        Span<byte> tmp = tmpa.AsSpan(0..32);
         BitConverter.TryWriteBytes(tmp, sequence);
         BitConverter.TryWriteBytes(tmp[8..], snap.Count);
         stream.Write(tmp[..16]);
-        hash.Ingest(tmp[..16]);
+        sha.TransformBlock(tmpa, 0, 16, null, 0);
 
         foreach (var node in snap)
         {
             BitConverter.TryWriteBytes(tmp[0..4], node.Key.Length);
             BitConverter.TryWriteBytes(tmp[4..8], node.Value.Length);
             stream.Write(tmp[0..4]);
-            hash.Ingest(tmp[0..4]);
+            sha.TransformBlock(tmpa, 0, 4, null, 0);
             stream.Write(node.Key.Span);
-            hash.Ingest(node.Key.Span);
+            IngestInternal(sha, node.Key);
             stream.Write(tmp[4..8]);
-            hash.Ingest(tmp[4..8]);
+            sha.TransformBlock(tmpa, 4, 4, null, 0);
             stream.Write(node.Value.Span);
-            hash.Ingest(node.Value.Span);
+            IngestInternal(sha, node.Value);
         }
 
-        hash.ComputeHash(tmp);
+        sha.TransformBlock(tmpa, 0, 0, tmpa, 0);
         stream.Write(tmp);
+    }
+
+    private static void IngestInternal(SHA256 sha, Mem key)
+    {
+        throw new NotImplementedException();
     }
 }
