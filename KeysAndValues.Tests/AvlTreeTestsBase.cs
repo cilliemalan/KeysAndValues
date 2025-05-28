@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 
+#pragma warning disable xUnit2013 // Do not use equality check to check for collection size.
+
 namespace KeysAndValues.Tests;
 
 public abstract class AvlTreeTestsBase
@@ -25,7 +27,7 @@ public abstract class AvlTreeTestsBase
         else
         {
 #pragma warning disable xUnit2005 // Do not use Assert.Same() on value type 'T'. Value types do not have identity. Use Assert.Equal instead.
-            Assert.Same((object)expected, (object)actual); //, message, formattingArgs);
+            Assert.Same((object)expected!, (object)actual!); //, message, formattingArgs);
 #pragma warning restore xUnit2005
         }
     }
@@ -384,11 +386,11 @@ public abstract class AvlTreeTestsBase
         Assert.Equal(0, empty.Values.Count());
         Assert.Same(EqualityComparer<V>.Default, GetValueComparer(empty));
         Assert.False(empty.ContainsKey(someKey));
-        Assert.False(empty.Contains(new KeyValuePair<K, V>(someKey, default(V))));
+        Assert.False(empty.Contains(new KeyValuePair<K, V>(someKey, default(V)!)));
         Assert.Equal(default(V), empty.GetValueOrDefault(someKey));
 
         V value;
-        Assert.False(empty.TryGetValue(someKey, out value));
+        Assert.False(empty.TryGetValue(someKey, out value!));
         Assert.Equal(default(V), value);
     }
 
@@ -459,7 +461,7 @@ public abstract class AvlTreeTestsBase
         Assert.Same(map, map.RemoveRange(Enumerable.Empty<TKey>()));
 
         // substantial remove
-        IImmutableDictionary<TKey, TValue> addedMap = map.Add(key, default(TValue));
+        IImmutableDictionary<TKey, TValue> addedMap = map.Add(key, default(TValue)!);
         IImmutableDictionary<TKey, TValue> removedMap = addedMap.Remove(key);
         Assert.NotSame(addedMap, removedMap);
         Assert.False(removedMap.ContainsKey(key));

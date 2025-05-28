@@ -11,6 +11,8 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
+#pragma warning disable xUnit2013 // Do not use equality check to check for collection size.
+
 namespace KeysAndValues.Tests;
 
 public class AvlTreeTests : AvlTreeTestsBase
