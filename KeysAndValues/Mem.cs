@@ -1,4 +1,6 @@
-﻿namespace KeysAndValues;
+﻿using System.Runtime.InteropServices;
+
+namespace KeysAndValues;
 
 /// <summary>
 /// Mem represents a pinned region of memory. Underneath it has a pointer and length.
@@ -86,6 +88,9 @@ public unsafe readonly struct Mem : IEquatable<Mem>, IComparable<Mem>
     }
 
     public override string ToString() => $"[{memory.Length} bytes]";
+
+    internal bool TryGetArray(out ArraySegment<byte> segment)
+        => MemoryMarshal.TryGetArray(memory, out segment);
 
     public static implicit operator ReadOnlySpan<byte>(in Mem mem) => mem.memory.Span;
     public static implicit operator ReadOnlyMemory<byte>(in Mem mem) => mem.memory;
