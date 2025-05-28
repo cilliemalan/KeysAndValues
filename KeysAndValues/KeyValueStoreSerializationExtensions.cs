@@ -9,34 +9,48 @@ public static class KeyValueStoreSerializationExtensions
     {
         var snap = store.Snapshot(out var sequence);
 
-        using var sha = SHA256.Create();
-        byte[] tmpa = ArrayPool<byte>.Shared.Rent(32);
-        Span<byte> tmp = tmpa.AsSpan(0..32);
+        using var sha = new Sha256Hasher();
+        Span<byte> tmp = stackalloc byte[32];
         BitConverter.TryWriteBytes(tmp, sequence);
         BitConverter.TryWriteBytes(tmp[8..], snap.Count);
         stream.Write(tmp[..16]);
-        sha.TransformBlock(tmpa, 0, 16, null, 0);
+        sha.Ingest(tmp[..16]);
 
         foreach (var node in snap)
         {
             BitConverter.TryWriteBytes(tmp[0..4], node.Key.Length);
             BitConverter.TryWriteBytes(tmp[4..8], node.Value.Length);
             stream.Write(tmp[0..4]);
-            sha.TransformBlock(tmpa, 0, 4, null, 0);
+            sha.Ingest(tmp[0..4]);
             stream.Write(node.Key.Span);
-            IngestInternal(sha, node.Key);
+            sha.Ingest(node.Key.Span);
             stream.Write(tmp[4..8]);
-            sha.TransformBlock(tmpa, 4, 4, null, 0);
+            sha.Ingest(tmp[4..8]);
             stream.Write(node.Value.Span);
-            IngestInternal(sha, node.Value);
+            sha.Ingest(node.Value.Span);
         }
 
-        sha.TransformBlock(tmpa, 0, 0, tmpa, 0);
+        sha.Compute(tmp);
         stream.Write(tmp);
     }
 
     private static void IngestInternal(SHA256 sha, Mem key)
     {
-        throw new NotImplementedException();
+        if (key.TryGetArray(out var seg))
+        {
+            sha.TransformBlock(seg.Array!, seg.Offset, seg.Count, seg.Array, seg.Offset);
+            return;
+        }
+
+        byte[] tmp = ArrayPool<byte>.Shared.Rent(64);
+        ReadOnlySpan<byte> src = key.Span;
+        while (src.Length > 0)
+        {
+            int toCopy = Math.Min(src.Length, tmp.Length);
+            src[..toCopy].CopyTo(tmp);
+            sha.TransformBlock(tmp, 0, toCopy, tmp, 0);
+            src = src[toCopy..];
+        }
+        ArrayPool<byte>.Shared.Return(tmp);
     }
 }
