@@ -2,6 +2,7 @@
 
 using System.Collections;
 using System.Collections.Immutable;
+using System.ComponentModel;
 
 // based on immutable sorted dictionary from the .net runtime
 
@@ -31,9 +32,10 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
     public static readonly ImmutableAvlTree<TKey, TValue> Empty = new();
 
     readonly Node root;
-    int count;
+    readonly int count;
 
-    private ImmutableAvlTree()
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public ImmutableAvlTree()
     {
         root = Node.EmptyNode;
         count = 0;
@@ -1471,7 +1473,7 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
             this.hasEnd = true;
         }
 
-        public readonly IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+        public readonly Enumerator GetEnumerator()
         {
             if (hasEnd)
             {
@@ -1485,6 +1487,9 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
             return new Enumerator(instance.root, reversed);
         }
+
+        readonly IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
+            => GetEnumerator();
 
         readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
