@@ -2,11 +2,11 @@
 using System.Diagnostics.Contracts;
 using System.Security.Cryptography;
 
-namespace KeysAndValues.Bench;
+namespace KeysAndValues;
 
 public static class Corpus
 {
-    public static SortedDictionary<Mem, Mem> Generate(int numKeys, int keyLenMin, int keyLenMax, int valueLenMin, int valueLenMax, int seed = 0)
+    public static SortedDictionary<Mem, Mem> Generate(int numKeys, int keyLenMin = 16, int keyLenMax = 24, int valueLenMin = 8, int valueLenMax = 128, int seed = 0)
     {
         var dic = new SortedDictionary<Mem, Mem>();
         foreach (var item in GenerateUnsorted(numKeys, keyLenMin, keyLenMax, valueLenMin, valueLenMax, seed))
@@ -17,7 +17,7 @@ public static class Corpus
         return dic;
     }
 
-    public static IEnumerable<KeyValuePair<Mem,Mem>> GenerateUnsorted(int numKeys, int keyLenMin, int keyLenMax, int valueLenMin, int valueLenMax, int seed = 0)
+    public static IEnumerable<KeyValuePair<Mem,Mem>> GenerateUnsorted(int numKeys, int keyLenMin = 16, int keyLenMax = 24, int valueLenMin = 8, int valueLenMax = 128, int seed = 0)
     {
         var r = new Random();
         using var rng = RandomNumberGenerator.Create();
