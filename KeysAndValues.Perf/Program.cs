@@ -6,9 +6,9 @@ var r = new Random();
 Console.Write("Generating corpus...");
 sw.Restart();
 var corpus = new List<KeyValuePair<Mem, Mem>>(1000000);
-corpus.AddRange(KeysAndValues.Bench.Corpus.GenerateUnsorted(corpus.Capacity, 16, 32, 16, 256, 123123));
+corpus.AddRange(Corpus.GenerateUnsorted(corpus.Capacity, 16, 32, 16, 256, 123123));
 var corpus2 = new List<KeyValuePair<Mem, Mem>>(1000000);
-corpus2.AddRange(KeysAndValues.Bench.Corpus.GenerateUnsorted(corpus.Capacity, 16, 32, 16, 256, 123123));
+corpus2.AddRange(Corpus.GenerateUnsorted(corpus.Capacity, 16, 32, 16, 256, 123123));
 Console.WriteLine($" {sw.Elapsed.TotalMilliseconds:F0}ms ({sw.Elapsed.TotalSeconds / (corpus.Count * 2) * 1.0e9:F0}ns per item)");
 
 
