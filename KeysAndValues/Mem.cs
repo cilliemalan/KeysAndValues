@@ -96,8 +96,8 @@ public readonly struct Mem : IEquatable<Mem>, IComparable<Mem>
     public static implicit operator ReadOnlySpan<byte>(in Mem mem) => mem.memory.Span;
     public static implicit operator ReadOnlyMemory<byte>(in Mem mem) => mem.memory;
     public static implicit operator Mem(in ReadOnlyMemory<byte> mem) => new(mem);
-    public static implicit operator Mem(string mem) => new(Internal.StringToBytesConversion.GetBytes(mem));
-    public static implicit operator string(Mem mem) => Internal.StringToBytesConversion.GetString(mem);
+    public static implicit operator Mem(string mem) => new(Encoding.UTF8.GetBytes(mem));
+    public static implicit operator string(Mem mem) => Encoding.UTF8.GetString(mem.memory.Span);
 
     public static bool operator ==(Mem left, Mem right) => left.Equals(right);
     public static bool operator !=(Mem left, Mem right) => !(left == right);

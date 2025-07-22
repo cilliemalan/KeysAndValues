@@ -4,10 +4,10 @@ public static class KeyValueStoreExtensions
 {
     public static string Get(this KeyValueStore store, string key)
     {
-        Mem kmem = key;
+        Mem kmem = new(Encoding.UTF8.GetBytes(key));
         if (store.TryGet(kmem, out var vmem))
         {
-            return vmem;
+            return Encoding.UTF8.GetString(vmem.Span);
         }
         throw new KeyNotFoundException($"Key '{key}' not found in the store.");
     }
