@@ -39,13 +39,6 @@ public sealed partial class KeyValueStore
     {
     }
 
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    [Obsolete("Use constructor instead.")]
-    public static KeyValueStore CreateEmpty() => new();
-
-    public static KeyValueStore CreateNewFrom(long sequence, IEnumerable<KeyValuePair<Mem, Mem>> source)
-        => new(new StoreVersion(sequence, ImmutableAvlTree<Mem, Mem>.Empty.AddRange(source, true, false)));
-
     public bool TryGet(Mem key, out Mem value)
     {
         return store.Data.TryGetValue(key, out value);
@@ -78,20 +71,18 @@ public sealed partial class KeyValueStore
         }
     }
 
+    /// <summary>
+    /// Get the sequence number of the current version of the store.
+    /// </summary>
     public long Sequence => store.Sequence;
 
+    /// <summary>
+    /// Get the data of the current version of the store.
+    /// </summary>
+    public ImmutableAvlTree<Mem, Mem> Data => store.Data;
+
+    /// <summary>
+    /// Get the current version of the store.
+    /// </summary>
     public StoreVersion Snapshot() => store;
-
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    [Obsolete("Use Snapshot instead")]
-    public ImmutableAvlTree<Mem, Mem> SnapshotOld() => store.Data;
-
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    [Obsolete("Use Snapshot instead")]
-    public ImmutableAvlTree<Mem, Mem> SnapshotOld(out long sequence)
-    {
-        var store = this.store;
-        sequence = store.Sequence;
-        return store.Data;
-    }
 }

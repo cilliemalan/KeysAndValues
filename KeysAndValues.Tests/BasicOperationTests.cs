@@ -48,7 +48,7 @@ public class BasicOperationTests
         kvs.Set("d", "4");
         kvs.Set("c", "5");
         kvs.Set("d", "6");
-        var s = kvs.Snapshot().Data;
+        var s = kvs.Data;
         Assert.Equal(4, s.Count);
         Assert.Equal("1", s["a"]);
         Assert.Equal("2", s["b"]);
@@ -140,7 +140,7 @@ public class BasicOperationTests
             ["c"] = "3",
             ["d"] = "4",
         });
-        var s = kvs.Snapshot().Data;
+        var s = kvs.Data;
         kvs.Set("e", "5");
         kvs.Set("f", "6");
         Assert.Equal(4, s.Count);
@@ -157,7 +157,7 @@ public class BasicOperationTests
             ["c"] = "3",
             ["d"] = "4",
         });
-        var s = kvs.Snapshot().Data;
+        var s = kvs.Data;
         kvs.Delete("b");
         kvs.Delete("c");
         Assert.Equal(4, s.Count);

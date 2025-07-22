@@ -46,7 +46,7 @@ namespace KeysAndValues.Tests
             }
 
             Assert.Equal(cmpkvs.Count, kvs.Count);
-            Assert.Equal(cmpkvs.Snapshot().Data.AsEnumerable(), kvs.Snapshot().Data.AsEnumerable());
+            Assert.Equal(cmpkvs.Data.AsEnumerable(), kvs.Data.AsEnumerable());
         }
 
         [Fact]

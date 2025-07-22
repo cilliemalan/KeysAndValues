@@ -6,7 +6,7 @@ namespace KeysAndValues;
 /// Mem represents a pinned region of memory. Underneath it has a pointer and length.
 /// The data is completely immutable from the perspective of the Mem structure.
 /// </summary>
-public unsafe readonly struct Mem : IEquatable<Mem>, IComparable<Mem>
+public readonly struct Mem : IEquatable<Mem>, IComparable<Mem>
 {
     private readonly ReadOnlyMemory<byte> memory;
 
@@ -64,23 +64,24 @@ public unsafe readonly struct Mem : IEquatable<Mem>, IComparable<Mem>
     public override bool Equals(object? obj) =>
         obj is Mem other && Equals(other);
 
-    public unsafe override int GetHashCode()
+    public override int GetHashCode()
     {
+        var u8data = memory.Span;
+        var u32data = MemoryMarshal.Cast<byte, uint>(u8data);
+        
         uint l = (uint)memory.Length;
         uint hash = l;
 
-        using var mh = memory.Pin();
-        byte* data = (byte*)mh.Pointer;
-        uint index = 0;
+        int index = 0;
         while (index + 4 <= l)
         {
-            hash = System.Numerics.BitOperations.RotateLeft(hash + ((uint*)data)[index / 4] * 3266489917U, 17) * 668265263U;
+            hash = System.Numerics.BitOperations.RotateLeft(hash + u32data[index / 4] * 3266489917U, 17) * 668265263U;
             index += 4;
         }
 
         while (index < l)
         {
-            hash = System.Numerics.BitOperations.RotateLeft(hash + data[index] * 2654435761U, 13) * 2246822519U;
+            hash = System.Numerics.BitOperations.RotateLeft(hash + u8data[index] * 2654435761U, 13) * 2246822519U;
             index++;
         }
 

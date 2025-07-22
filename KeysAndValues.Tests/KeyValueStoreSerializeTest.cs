@@ -28,7 +28,7 @@ namespace KeysAndValues.Tests
             var kvs2 = KeyValueStore.Deserialize(ms);
             Assert.Equal(kvs.Count, kvs2.Count);
             Assert.Equal(kvs.Sequence, kvs2.Sequence);
-            Assert.Equal(kvs.Snapshot().Data.AsEnumerable(), kvs2.Snapshot().Data.AsEnumerable());
+            Assert.Equal(kvs.Data.AsEnumerable(), kvs2.Data.AsEnumerable());
         }
     }
 }
