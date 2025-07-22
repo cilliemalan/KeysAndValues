@@ -142,7 +142,7 @@ public static class KeyValueStoreExtensions
     public static StoreVersion Set(this KeyValueStore store, IEnumerable<KeyValuePair<Mem, Mem>> entries)
     {
         int nkeys = 0;
-        int nkcap = entries is ICollection<KeyValuePair<Mem, Mem>> kc ? kc.Count: 1;
+        int nkcap = entries is ICollection<KeyValuePair<Mem, Mem>> kc ? kc.Count : 1;
         var ops = ArrayPool<ChangeOperation>.Shared.Rent(nkcap);
         try
         {
@@ -258,5 +258,49 @@ public static class KeyValueStoreExtensions
         }
 
         return k.Range(fromKeyInclusive, toKeyExclusive);
+    }
+
+    /// <summary>
+    /// Returns an enumerable that enumerates all items with a key with a given prefix.
+    /// </summary>
+    /// <param name="store">The store.</param>
+    /// <param name="prefix">The prefix.</param>
+    /// <returns>An enumerable for the items in the store.</returns>
+    public static IEnumerable<KeyValuePair<Mem, Mem>> EnumeratePrefix(this KeyValueStore store, Mem prefix)
+    {
+        var k = store.Data;
+        if (prefix.IsEmpty)
+        {
+            return k;
+        }
+
+        var mem = new byte[prefix.Length];
+        prefix.Span.CopyTo(mem);
+        if (Increment(mem))
+        {
+            var prefixEnd = new Mem(mem);
+            return k.Range(prefix, prefixEnd);
+        }
+        else
+        {
+            // it's not possible to add an item to the dictionary
+            // that has the same prefix but sorts past it.
+            return k.Range(prefix);
+        }
+    }
+
+    private static bool Increment(Span<byte> mem)
+    {
+        for (int i = 0; i < mem.Length; i++)
+        {
+            var newbyte = ++mem[mem.Length - 1 - i];
+
+            if (newbyte != 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
