@@ -5,6 +5,8 @@ using System.Collections.Immutable;
 using System.ComponentModel;
 
 // based on immutable sorted dictionary from the .net runtime
+#pragma warning disable IDE0301 // Simplify collection initialization
+#pragma warning disable IDE0028 // Simplify collection initialization
 
 [DebuggerDisplay("Count = {Count}")]
 [DebuggerTypeProxy(typeof(ImmutableDictionaryDebuggerProxy<,>))]
@@ -309,10 +311,9 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
         int count = this.count;
         foreach (var item in items)
         {
-            bool mutated;
             bool replacedExistingValue = false;
             Node newResult = overwriteOnCollision
-                ? result.SetItem(item.Key, item.Value, out replacedExistingValue, out mutated)
+                ? result.SetItem(item.Key, item.Value, out replacedExistingValue, out bool mutated)
                 : result.Add(item.Key, item.Value, out mutated);
 
             if (mutated)
@@ -1415,7 +1416,7 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
         }
         public TValue? GetValueOrDefault(TKey key)
         {
-            return this.GetValueOrDefault(key, default(TValue)!);
+            return this.GetValueOrDefault(key, default!);
         }
 
         public TValue GetValueOrDefault(TKey key, TValue defaultValue)
