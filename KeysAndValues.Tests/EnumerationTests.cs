@@ -64,10 +64,12 @@ public class EnumerationTests
         var store = new KeyValueStore(1, new Dictionary<Mem, Mem>
         {
             ["alpha:1"] = "value1",
+            ["bet`"] = "value",
             ["beta"] = "value",
             ["beta:2"] = "value2",
             ["beta:3"] = "value3",
             ["beta:4"] = "value4",
+            ["betb"] = "valueb",
             ["gamma:5"] = "value5"
         });
         var list = store.EnumeratePrefix("beta").ToList();
