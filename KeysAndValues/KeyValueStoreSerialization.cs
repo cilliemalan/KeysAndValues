@@ -3,13 +3,12 @@
 using KeysAndValues.Internal;
 using System.Security.Cryptography;
 
-public partial class KeyValueStore
+public static class KeyValueStoreSerialization
 {
-    public void Serialize(Stream stream)
+    public static void SerializeStoreVersion(StoreVersion version, Stream stream)
     {
-        var s = store;
-        var snap = s.Data;
-        var sequence = s.Sequence;
+        var snap = version.Data;
+        var sequence = version.Sequence;
 
         using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         Span<byte> tmp = stackalloc byte[32];
@@ -36,16 +35,16 @@ public partial class KeyValueStore
         stream.Write(tmp);
     }
 
-    public static KeyValueStore Deserialize(Stream stream)
+    public static StoreVersion DeserializeStoreVersion(Stream stream)
     {
-        if (!TryDeserialize(stream, out var kvs))
+        if (!TryDeserializeStoreVersion(stream, out var kvs))
         {
             throw new InvalidDataException("Invalid KeyValueStore serialization data.");
         }
         return kvs;
     }
 
-    public static bool TryDeserialize(Stream stream, [MaybeNullWhen(false)] out KeyValueStore kvs)
+    public static bool TryDeserializeStoreVersion(Stream stream, [MaybeNullWhen(false)] out StoreVersion kvs)
     {
         kvs = null;
         using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);

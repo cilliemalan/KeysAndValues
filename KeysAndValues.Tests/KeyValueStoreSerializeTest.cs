@@ -14,7 +14,7 @@ namespace KeysAndValues.Tests
         {
             var kvs = new KeyValueStore(1, Corpus.GenerateUnsorted(10));
             using var ms = new MemoryStream();
-            kvs.Serialize(ms);
+            KeyValueStoreSerialization.SerializeStoreVersion(kvs.Snapshot(), ms);
             Debug.Assert(ms.Length > 0);
         }
 
@@ -23,12 +23,12 @@ namespace KeysAndValues.Tests
         {
             var kvs = new KeyValueStore(1, Corpus.GenerateUnsorted(10));
             using var ms = new MemoryStream();
-            kvs.Serialize(ms);
+            KeyValueStoreSerialization.SerializeStoreVersion(kvs.Snapshot(), ms);
             ms.Position = 0;
-            var kvs2 = KeyValueStore.Deserialize(ms);
-            Assert.Equal(kvs.Count, kvs2.Count);
-            Assert.Equal(kvs.Sequence, kvs2.Sequence);
-            Assert.Equal(kvs.Data.AsEnumerable(), kvs2.Data.AsEnumerable());
+            var ver2 = KeyValueStoreSerialization.DeserializeStoreVersion(ms);
+            Assert.Equal(kvs.Count, ver2.Data.Count);
+            Assert.Equal(kvs.Sequence, ver2.Sequence);
+            Assert.Equal(kvs.Data.AsEnumerable(), ver2.Data.AsEnumerable());
         }
     }
 }
