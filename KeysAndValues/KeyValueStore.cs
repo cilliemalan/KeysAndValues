@@ -5,16 +5,14 @@ namespace KeysAndValues;
 public sealed partial class KeyValueStore
 {
     public delegate void ChangeHandler(
-        KeyValueStore keyValueStore, 
+        KeyValueStore keyValueStore,
         in ReadOnlySpan<ChangeOperation> operations,
         long newSequence,
         ImmutableAvlTree<Mem, Mem> store);
 
-    private SpinLock spinLock = new();
-    private long sequence;
-    private ImmutableAvlTree<Mem, Mem> store = ImmutableAvlTree<Mem, Mem>.Empty;
+    private StoreVersion store = StoreVersion.Empty;
 
-    public int Count => store.Count;
+    public int Count => store.Data.Count;
 
     /// <summary>
     /// Called whenever the store changes. Handlers
@@ -24,79 +22,76 @@ public sealed partial class KeyValueStore
     [EditorBrowsable(EditorBrowsableState.Advanced)]
     public event ChangeHandler? Changed;
 
-    private KeyValueStore()
+    public KeyValueStore() { }
+
+    public KeyValueStore(StoreVersion storeVersion)
+    {
+        store = storeVersion ?? throw new ArgumentNullException(nameof(storeVersion));
+    }
+
+    public KeyValueStore(long sequence, ImmutableAvlTree<Mem, Mem> store)
+        : this(new StoreVersion(sequence, store ?? throw new ArgumentNullException(nameof(store))))
     {
     }
 
-    public static KeyValueStore CreateEmpty()
-        => new();
-
-    public static KeyValueStore CreateNewFrom(IEnumerable<KeyValuePair<Mem, Mem>> source)
+    public KeyValueStore(long sequence, IEnumerable<KeyValuePair<Mem, Mem>> store)
+        : this(new StoreVersion(sequence, ImmutableAvlTree<Mem, Mem>.Empty.AddRange(store ?? throw new ArgumentNullException(nameof(store)))))
     {
-        return new()
-        {
-            store = ImmutableAvlTree<Mem, Mem>.Empty.AddRange(source, true, false),
-            sequence = 1 // shrug
-        };
     }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [Obsolete("Use constructor instead.")]
+    public static KeyValueStore CreateEmpty() => new();
+
+    public static KeyValueStore CreateNewFrom(long sequence, IEnumerable<KeyValuePair<Mem, Mem>> source)
+        => new(new StoreVersion(sequence, ImmutableAvlTree<Mem, Mem>.Empty.AddRange(source, true, false)));
 
     public bool TryGet(Mem key, out Mem value)
     {
-        return store.TryGetValue(key, out value);
+        return store.Data.TryGetValue(key, out value);
     }
 
     public long Apply(ReadOnlySpan<ChangeOperation> operations)
     {
-        for (; ; )
+        for (int i = 0; ; i++)
         {
             var s = store;
+            var newStore = new StoreVersion(
+                checked(s.Sequence + 1),
+                s.Data.Apply(operations));
 
-            bool spinLockTaken = false;
-            spinLock.TryEnter(ref spinLockTaken);
-            if (!spinLockTaken)
+            bool exchanged = Interlocked.CompareExchange(ref store, newStore, s) == s;
+            if (exchanged)
+            {
+                Changed?.Invoke(this, operations, newStore.Sequence, newStore.Data);
+                return newStore.Sequence;
+            }
+
+            if (i == 0)
             {
                 Thread.Yield();
-                continue;
             }
-
-            var newStore = s.Apply(operations);
-            bool exchanged = Interlocked.CompareExchange(ref store, newStore, s) == s;
-            if (!exchanged)
+            else
             {
-                spinLock.Exit();
-                continue;
+                Thread.Sleep(i * Random.Shared.Next(120));
             }
-
-            // NOTE: Using interlocked because I don't believe the spinlock
-            // will do a memory barrier.
-            var newSequence = Interlocked.Increment(ref sequence);
-            
-            try
-            {
-                Changed?.Invoke(this, operations, newSequence, newStore);
-            }
-            finally
-            {
-                spinLock.Exit();
-            }
-            
-            return newSequence;
         }
     }
 
-    public long Sequence => sequence;
+    public long Sequence => store.Sequence;
 
-    public ImmutableAvlTree<Mem, Mem> Snapshot() => store;
+    public StoreVersion Snapshot() => store;
 
-    public ImmutableAvlTree<Mem, Mem> Snapshot(out long sequence)
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [Obsolete("Use Snapshot instead")]
+    public ImmutableAvlTree<Mem, Mem> SnapshotOld() => store.Data;
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [Obsolete("Use Snapshot instead")]
+    public ImmutableAvlTree<Mem, Mem> SnapshotOld(out long sequence)
     {
-        bool taken = false;
-        spinLock.Enter(ref taken);
-        Debug.Assert(taken);
-        sequence = this.sequence;
         var store = this.store;
-        spinLock.Exit();
-
-        return store;
+        sequence = store.Sequence;
+        return store.Data;
     }
 }

@@ -13,9 +13,9 @@ namespace KeysAndValues.Tests
         [Fact]
         public void BasicMultiThreadedAddTest()
         {
-            var kvs = KeyValueStore.CreateEmpty();
+            var kvs = new KeyValueStore();
             var data = Corpus.GenerateUnsorted(10000).ToList();
-            var cmpkvs = KeyValueStore.CreateNewFrom(data);
+            var cmpkvs = new KeyValueStore(1, data);
             var channel = Channel.CreateUnbounded<KeyValuePair<Mem, Mem>>();
             var threads = Enumerable.Range(0, 16).Select(x => new Thread(() =>
             {
@@ -46,13 +46,13 @@ namespace KeysAndValues.Tests
             }
 
             Assert.Equal(cmpkvs.Count, kvs.Count);
-            Assert.Equal(cmpkvs.Snapshot().AsEnumerable(), kvs.Snapshot().AsEnumerable());
+            Assert.Equal(cmpkvs.Snapshot().Data.AsEnumerable(), kvs.Snapshot().Data.AsEnumerable());
         }
 
         [Fact]
         public void BasicMultiThreadedAddAndReadTest()
         {
-            var kvs = KeyValueStore.CreateEmpty();
+            var kvs = new KeyValueStore();
             var data = Corpus.GenerateUnsorted(10000).ToDictionary();
             var writeChannel = Channel.CreateUnbounded<KeyValuePair<Mem, Mem>>();
             var readChannel = Channel.CreateUnbounded<KeyValuePair<Mem, Mem>>();

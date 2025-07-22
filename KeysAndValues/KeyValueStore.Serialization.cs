@@ -7,7 +7,9 @@ public partial class KeyValueStore
 {
     public void Serialize(Stream stream)
     {
-        var snap = Snapshot(out var sequence);
+        var s = store;
+        var snap = s.Data;
+        var sequence = s.Sequence;
 
         using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         Span<byte> tmp = stackalloc byte[32];
@@ -102,11 +104,7 @@ public partial class KeyValueStore
             return false;
         }
 
-        kvs = new()
-        {
-            store = builder.ToImmutable(),
-            sequence = sequence
-        };
+        kvs = new(sequence, builder.ToImmutable());
         return true;
     }
 }

@@ -5,12 +5,13 @@ public class BasicOperationTests
     [Fact]
     public void BasicSetTest()
     {
-        var kvs = KeyValueStore.CreateEmpty();
+        var kvs = new KeyValueStore();
         kvs.Set("a", "1");
         kvs.Set("b", "2");
         kvs.Set("c", "3");
         kvs.Set("d", "4");
-        var s = kvs.Snapshot();
+        var v = kvs.Snapshot();
+        var s = v.Data;
         Assert.Equal(4, s.Count);
         Assert.Equal("1", s["a"]);
         Assert.Equal("2", s["b"]);
@@ -22,7 +23,7 @@ public class BasicOperationTests
     [Fact]
     public void BasicGetTest()
     {
-        var kvs = KeyValueStore.CreateNewFrom(new Dictionary<Mem, Mem>
+        var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
         {
             ["a"] = "1",
             ["b"] = "2",
@@ -40,14 +41,14 @@ public class BasicOperationTests
     [Fact]
     public void BasicSetOverwriteTest()
     {
-        var kvs = KeyValueStore.CreateEmpty();
+        var kvs = new KeyValueStore();
         kvs.Set("a", "1");
         kvs.Set("b", "2");
         kvs.Set("c", "3");
         kvs.Set("d", "4");
         kvs.Set("c", "5");
         kvs.Set("d", "6");
-        var s = kvs.Snapshot();
+        var s = kvs.Snapshot().Data;
         Assert.Equal(4, s.Count);
         Assert.Equal("1", s["a"]);
         Assert.Equal("2", s["b"]);
@@ -59,7 +60,7 @@ public class BasicOperationTests
     [Fact]
     public void BasicDeleteTest()
     {
-        var kvs = KeyValueStore.CreateNewFrom(new Dictionary<Mem, Mem>
+        var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
         {
             ["a"] = "1",
             ["b"] = "2",
@@ -77,7 +78,7 @@ public class BasicOperationTests
     [Fact]
     public void MultiDeleteTest()
     {
-        var kvs = KeyValueStore.CreateNewFrom(new Dictionary<Mem, Mem>
+        var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
         {
             ["a"] = "1",
             ["b"] = "2",
@@ -96,7 +97,7 @@ public class BasicOperationTests
     [Fact]
     public void BasicEnumerationTest()
     {
-        var kvs = KeyValueStore.CreateNewFrom(new Dictionary<Mem, Mem>
+        var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
         {
             ["a"] = "1",
             ["b"] = "2",
@@ -113,7 +114,7 @@ public class BasicOperationTests
     [Fact]
     public void BasicRangeEnumerationTest()
     {
-        var kvs = KeyValueStore.CreateNewFrom(new Dictionary<Mem, Mem>
+        var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
         {
             ["a"] = "1",
             ["b"] = "2",
@@ -132,14 +133,14 @@ public class BasicOperationTests
     [Fact]
     public void BasicSnapshotTest()
     {
-        var kvs = KeyValueStore.CreateNewFrom(new Dictionary<Mem, Mem>
+        var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
         {
             ["a"] = "1",
             ["b"] = "2",
             ["c"] = "3",
             ["d"] = "4",
         });
-        var s = kvs.Snapshot();
+        var s = kvs.Snapshot().Data;
         kvs.Set("e", "5");
         kvs.Set("f", "6");
         Assert.Equal(4, s.Count);
@@ -149,14 +150,14 @@ public class BasicOperationTests
     [Fact]
     public void DeleteSnapshotTest()
     {
-        var kvs = KeyValueStore.CreateNewFrom(new Dictionary<Mem, Mem>
+        var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
         {
             ["a"] = "1",
             ["b"] = "2",
             ["c"] = "3",
             ["d"] = "4",
         });
-        var s = kvs.Snapshot();
+        var s = kvs.Snapshot().Data;
         kvs.Delete("b");
         kvs.Delete("c");
         Assert.Equal(4, s.Count);
@@ -168,7 +169,7 @@ public class BasicOperationTests
     [Fact]
     public void DeleteRangeTest()
     {
-        var kvs = KeyValueStore.CreateNewFrom(new Dictionary<Mem, Mem>
+        var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
         {
             ["a"] = "1",
             ["b"] = "2",
@@ -184,7 +185,7 @@ public class BasicOperationTests
     [Fact]
     public void GetNonexistantTest()
     {
-        var kvs = KeyValueStore.CreateNewFrom(new Dictionary<Mem, Mem>
+        var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
         {
             ["a"] = "1",
             ["b"] = "2",
@@ -197,7 +198,7 @@ public class BasicOperationTests
     [Fact]
     public void SetMultipleTest()
     {
-        var kvs = KeyValueStore.CreateNewFrom(new Dictionary<Mem, Mem>
+        var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
         {
             ["a"] = "1",
             ["b"] = "2",
@@ -220,7 +221,7 @@ public class BasicOperationTests
     [Fact]
     public void SetMultipleWithOverlapTest()
     {
-        var kvs = KeyValueStore.CreateNewFrom(new Dictionary<Mem, Mem>
+        var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
         {
             ["a"] = "1",
             ["b"] = "2",
@@ -243,7 +244,7 @@ public class BasicOperationTests
     [Fact]
     public void SetMultipleWithOverlapAndRepeatsTest()
     {
-        var kvs = KeyValueStore.CreateNewFrom(new Dictionary<Mem, Mem>
+        var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
         {
             ["a"] = "1",
             ["b"] = "2",

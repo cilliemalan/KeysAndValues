@@ -157,13 +157,13 @@ public static class KeyValueStoreExtensions
         return builder.ToImmutable();
     }
 
-    public static IEnumerable<KeyValuePair<Mem, Mem>> Enumerate(this KeyValueStore store) => store.Snapshot();
-    public static IEnumerable<Mem> Keys(this KeyValueStore store) => store.Snapshot().Keys;
-    public static IEnumerable<Mem> Values(this KeyValueStore store) => store.Snapshot().Values;
+    public static IEnumerable<KeyValuePair<Mem, Mem>> Enumerate(this KeyValueStore store) => store.Snapshot().Data;
+    public static IEnumerable<Mem> Keys(this KeyValueStore store) => store.Snapshot().Data.Keys;
+    public static IEnumerable<Mem> Values(this KeyValueStore store) => store.Snapshot().Data.Values;
 
     public static IEnumerable<KeyValuePair<Mem, Mem>> Enumerate(this KeyValueStore store, Mem fromKeyInclusive, Mem toKeyExclusive)
     {
-        var k = store.Snapshot();
+        var k = store.Snapshot().Data;
         if (toKeyExclusive.IsEmpty)
         {
             // the "default" Mem will always sort before the first entry in the database

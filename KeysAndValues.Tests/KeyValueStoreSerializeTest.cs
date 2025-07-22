@@ -12,7 +12,7 @@ namespace KeysAndValues.Tests
         [Fact]
         public void BasicSerializeTest()
         {
-            var kvs = KeyValueStore.CreateNewFrom(Corpus.GenerateUnsorted(10));
+            var kvs = new KeyValueStore(1, Corpus.GenerateUnsorted(10));
             using var ms = new MemoryStream();
             kvs.Serialize(ms);
             Debug.Assert(ms.Length > 0);
@@ -21,14 +21,14 @@ namespace KeysAndValues.Tests
         [Fact]
         public void BasicDeserializeTest()
         {
-            var kvs = KeyValueStore.CreateNewFrom(Corpus.GenerateUnsorted(10));
+            var kvs = new KeyValueStore(1, Corpus.GenerateUnsorted(10));
             using var ms = new MemoryStream();
             kvs.Serialize(ms);
             ms.Position = 0;
             var kvs2 = KeyValueStore.Deserialize(ms);
             Assert.Equal(kvs.Count, kvs2.Count);
             Assert.Equal(kvs.Sequence, kvs2.Sequence);
-            Assert.Equal(kvs.Snapshot().AsEnumerable(), kvs2.Snapshot().AsEnumerable());
+            Assert.Equal(kvs.Snapshot().Data.AsEnumerable(), kvs2.Snapshot().Data.AsEnumerable());
         }
     }
 }
