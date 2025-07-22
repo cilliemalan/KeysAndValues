@@ -1,5 +1,8 @@
 ﻿namespace KeysAndValues;
 
+/// <summary>
+/// The type of a change operation.
+/// </summary>
 public enum ChangeOperationType
 {
     /// <summary>

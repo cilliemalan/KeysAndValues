@@ -5,6 +5,21 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<LangVersion>latest</LangVersion>
+
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<Title>Eureka API Client</Title>
+		<Authors>Eureka</Authors>
+		<Company>Eureka</Company>
+		<Description>Simple in-memory key/value store.</Description>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<Version>1.0.0.0</Version>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<DebugType>embedded</DebugType>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="README.md" Pack="true" PackagePath="">
+		</None>
+	</ItemGroup>
 
 </Project>

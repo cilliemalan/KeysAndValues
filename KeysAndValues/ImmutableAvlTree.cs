@@ -4,6 +4,9 @@ using System.Collections;
 using System.Collections.Immutable;
 using System.ComponentModel;
 
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
 // based on immutable sorted dictionary from the .net runtime
 #pragma warning disable IDE0301 // Simplify collection initialization
 #pragma warning disable IDE0028 // Simplify collection initialization

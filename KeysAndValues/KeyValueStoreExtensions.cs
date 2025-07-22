@@ -1,8 +1,18 @@
 ﻿namespace KeysAndValues;
 
+/// <summary>
+/// Extension methods for <see cref="KeyValueStore"/>.
+/// </summary>
 public static class KeyValueStoreExtensions
 {
-    public static string Get(this KeyValueStore store, string key)
+    /// <summary>
+    /// Get an item from the store as if it was a string key/value store.
+    /// </summary>
+    /// <param name="store">The store.</param>
+    /// <param name="key">The key of the item.</param>
+    /// <returns>The value of the item.</returns>
+    /// <exception cref="KeyNotFoundException">The item was not found.</exception>
+    public static string GetSring(this KeyValueStore store, string key)
     {
         Mem kmem = new(Encoding.UTF8.GetBytes(key));
         if (store.TryGet(kmem, out var vmem))
@@ -12,6 +22,13 @@ public static class KeyValueStoreExtensions
         throw new KeyNotFoundException($"Key '{key}' not found in the store.");
     }
 
+    /// <summary>
+    /// Get an item from the store.
+    /// </summary>
+    /// <param name="store">The store</param>
+    /// <param name="mem">The key</param>
+    /// <returns>The item.</returns>
+    /// <exception cref="KeyNotFoundException">The item was not found.</exception>
     public static Mem Get(this KeyValueStore store, Mem mem)
     {
         if (store.TryGet(mem, out var value))
@@ -21,7 +38,14 @@ public static class KeyValueStoreExtensions
         throw new KeyNotFoundException($"Key not found in the store.");
     }
 
-    public static long Set(this KeyValueStore store, Mem key, Mem value)
+    /// <summary>
+    /// Set an item in the store.
+    /// </summary>
+    /// <param name="store">The store.</param>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <returns>The new store version</returns>
+    public static StoreVersion Set(this KeyValueStore store, Mem key, Mem value)
     {
         return store.Apply([new()
         {
@@ -31,7 +55,13 @@ public static class KeyValueStoreExtensions
         }]);
     }
 
-    public static long Delete(this KeyValueStore store, IEnumerable<Mem> keys)
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="store"></param>
+    /// <param name="keys"></param>
+    /// <returns>The new store version</returns>
+    public static StoreVersion Delete(this KeyValueStore store, IEnumerable<Mem> keys)
     {
         int nkeys = 0;
         int nkcap = keys is ICollection<Mem> ckeys ? ckeys.Count : 1;
@@ -61,7 +91,13 @@ public static class KeyValueStoreExtensions
         }
     }
 
-    public static long Delete(this KeyValueStore store, Mem key)
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="store"></param>
+    /// <param name="key"></param>
+    /// <returns>The new store version</returns>
+    public static StoreVersion Delete(this KeyValueStore store, Mem key)
     {
         return store.Apply([new()
         {
@@ -70,7 +106,15 @@ public static class KeyValueStoreExtensions
         }]);
     }
 
-    public static long Set(this KeyValueStore store, ReadOnlySpan<byte> key, ReadOnlySpan<byte> value)
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="store"></param>
+    /// <param name="key"></param>
+    /// <param name="value"></param>
+    /// <returns>The new store version</returns>
+    /// <exception cref="ArgumentException"></exception>
+    public static StoreVersion Set(this KeyValueStore store, ReadOnlySpan<byte> key, ReadOnlySpan<byte> value)
     {
         if (key.Length == 0)
         {
@@ -89,7 +133,13 @@ public static class KeyValueStoreExtensions
         }]);
     }
 
-    public static long Set(this KeyValueStore store, IEnumerable<KeyValuePair<Mem, Mem>> entries)
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="store"></param>
+    /// <param name="entries"></param>
+    /// <returns>The new store version</returns>
+    public static StoreVersion Set(this KeyValueStore store, IEnumerable<KeyValuePair<Mem, Mem>> entries)
     {
         int nkeys = 0;
         int nkcap = entries is ICollection<KeyValuePair<Mem, Mem>> kc ? kc.Count: 1;
@@ -120,17 +170,30 @@ public static class KeyValueStoreExtensions
         }
     }
 
-    public static long Set(this KeyValueStore store, ReadOnlyMemory<byte> key, ReadOnlyMemory<byte> value)
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="store"></param>
+    /// <param name="key"></param>
+    /// <param name="value"></param>
+    /// <returns>The new store version</returns>
+    public static StoreVersion Set(this KeyValueStore store, ReadOnlyMemory<byte> key, ReadOnlyMemory<byte> value)
     {
         return store.Apply([new() { Type = ChangeOperationType.Set, Key = key, Value = value }]);
     }
 
-    public static long Delete(this KeyValueStore store, ReadOnlySpan<byte> key)
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="store"></param>
+    /// <param name="key"></param>
+    /// <returns>The new store version</returns>
+    public static StoreVersion Delete(this KeyValueStore store, ReadOnlySpan<byte> key)
     {
         return store.Apply([new() { Type = ChangeOperationType.Set, Key = key.ToArray(), Value = default }]);
     }
 
-    public static void Apply(this ImmutableAvlTree<Mem, Mem>.Builder builder, ReadOnlySpan<ChangeOperation> operations)
+    internal static void Apply(this ImmutableAvlTree<Mem, Mem>.Builder builder, ReadOnlySpan<ChangeOperation> operations)
     {
         for (int i = 0; i < operations.Length; i++)
         {
@@ -150,17 +213,41 @@ public static class KeyValueStoreExtensions
         }
     }
 
-    public static ImmutableAvlTree<Mem, Mem> Apply(this ImmutableAvlTree<Mem, Mem> store, ReadOnlySpan<ChangeOperation> operations)
+    internal static ImmutableAvlTree<Mem, Mem> Apply(this ImmutableAvlTree<Mem, Mem> store, ReadOnlySpan<ChangeOperation> operations)
     {
         var builder = store.ToBuilder();
         builder.Apply(operations);
         return builder.ToImmutable();
     }
 
+    /// <summary>
+    /// Enumerate the keys and values in a store.
+    /// </summary>
+    /// <param name="store">The store.</param>
+    /// <returns>An enumerable for the items in the store.</returns>
     public static IEnumerable<KeyValuePair<Mem, Mem>> Enumerate(this KeyValueStore store) => store.Data;
+
+    /// <summary>
+    /// Enumerate the keys  in a store.
+    /// </summary>
+    /// <param name="store">The store.</param>
+    /// <returns>An enumerable for the keys in the store.</returns>
     public static IEnumerable<Mem> Keys(this KeyValueStore store) => store.Data.Keys;
+
+    /// <summary>
+    /// Enumerate the values in a store.
+    /// </summary>
+    /// <param name="store">The store.</param>
+    /// <returns>An enumerable for the values in the store.</returns>
     public static IEnumerable<Mem> Values(this KeyValueStore store) => store.Data.Values;
 
+    /// <summary>
+    /// Return an enumerable that allows range enumeration over the store.
+    /// </summary>
+    /// <param name="store">The store.</param>
+    /// <param name="fromKeyInclusive">The largest key to include.</param>
+    /// <param name="toKeyExclusive">The smallest key to exclude.</param>
+    /// <returns>An enumerable for the items in the store.</returns>
     public static IEnumerable<KeyValuePair<Mem, Mem>> Enumerate(this KeyValueStore store, Mem fromKeyInclusive, Mem toKeyExclusive)
     {
         var k = store.Data;

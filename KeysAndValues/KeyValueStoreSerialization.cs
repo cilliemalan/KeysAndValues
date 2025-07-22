@@ -3,8 +3,16 @@
 using KeysAndValues.Internal;
 using System.Security.Cryptography;
 
+/// <summary>
+/// Provides methods for serializing key/value stores.
+/// </summary>
 public static class KeyValueStoreSerialization
 {
+    /// <summary>
+    /// Serialize a store version.
+    /// </summary>
+    /// <param name="version">The version to serialize.</param>
+    /// <param name="stream">The stream to serialize to.</param>
     public static void SerializeStoreVersion(StoreVersion version, Stream stream)
     {
         var snap = version.Data;
@@ -35,6 +43,12 @@ public static class KeyValueStoreSerialization
         stream.Write(tmp);
     }
 
+    /// <summary>
+    /// Deserialize a store version from a stream.
+    /// </summary>
+    /// <param name="stream">The stream to deserialize from</param>
+    /// <returns>The new version object.</returns>
+    /// <exception cref="InvalidDataException">Deserialization failed.</exception>
     public static StoreVersion DeserializeStoreVersion(Stream stream)
     {
         if (!TryDeserializeStoreVersion(stream, out var kvs))
@@ -44,6 +58,12 @@ public static class KeyValueStoreSerialization
         return kvs;
     }
 
+    /// <summary>
+    /// Try to deserialize a store version from a stream.
+    /// </summary>
+    /// <param name="stream">The stream to deserialize from.</param>
+    /// <param name="kvs">The version to deserialize.</param>
+    /// <returns><c>true</c> if a store version could be deserialized.</returns>
     public static bool TryDeserializeStoreVersion(Stream stream, [MaybeNullWhen(false)] out StoreVersion kvs)
     {
         kvs = null;
