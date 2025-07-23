@@ -1,13 +1,16 @@
-﻿namespace KeysAndValues;
+﻿
+// based on immutable sorted dictionary from the .net runtime
+
+namespace KeysAndValues;
 
 using System.Collections;
-using System.Collections.Immutable;
 using System.ComponentModel;
 
 
+#pragma warning disable CS8601 // Possible null reference assignment.
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
-
-// based on immutable sorted dictionary from the .net runtime
 #pragma warning disable IDE0301 // Simplify collection initialization
 #pragma warning disable IDE0028 // Simplify collection initialization
 
@@ -30,7 +33,7 @@ public static class ImmutableAvlTree
     }
 }
 
-public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>, IDictionary<TKey, TValue>, IDictionary
+public class ImmutableAvlTree<TKey, TValue> : IDictionary<TKey, TValue>, IDictionary
     where TValue : IComparable<TValue>
     where TKey : IComparable<TKey>
 {
@@ -60,9 +63,9 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
     public IEnumerable<TKey> Keys => root.Keys;
     public IEnumerable<TValue> Values => root.Values;
 
-    ImmutableAvlTree<TKey, TValue> Clear() => root.IsEmpty ? this : Empty;
+    public ImmutableAvlTree<TKey, TValue> Clear() => root.IsEmpty ? this : Empty;
 
-    IImmutableDictionary<TKey, TValue> IImmutableDictionary<TKey, TValue>.Clear() => Clear();
+    public TValue? GetValueOrDefault(TKey key) => TryGetValue(key, out var value) ? value : default;
 
     ICollection<TKey> IDictionary<TKey, TValue>.Keys => new KeysCollectionAccessor(this);
     ICollection<TValue> IDictionary<TKey, TValue>.Values => new ValuesCollectionAccessor(this);
@@ -72,7 +75,8 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
     {
         get
         {
-            ArgumentNullException.ThrowIfNull(key, nameof(key));
+            if (key is null) throw new ArgumentNullException(nameof(key));
+            if (key is null) throw new ArgumentNullException(nameof(key));
             if (!TryGetValue(key, out var value))
             {
                 throw new KeyNotFoundException($"The key '{key}' was not found");
@@ -84,7 +88,7 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
     public ref readonly TValue ValueRef(TKey key)
     {
-        ArgumentNullException.ThrowIfNull(key, nameof(key));
+        if (key is null) throw new ArgumentNullException(nameof(key));
         return ref root.ValueRef(key);
     }
 
@@ -98,40 +102,40 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
     public ImmutableAvlTree<TKey, TValue> Add(TKey key, TValue value)
     {
-        ArgumentNullException.ThrowIfNull(key, nameof(key));
+        if (key is null) throw new ArgumentNullException(nameof(key));
         Node result = root.Add(key, value, out _);
         return Wrap(result, count + 1);
     }
 
     public ImmutableAvlTree<TKey, TValue> SetItem(TKey key, TValue value)
     {
-        ArgumentNullException.ThrowIfNull(key, nameof(key));
+        if (key is null) throw new ArgumentNullException(nameof(key));
         Node result = root.SetItem(key, value, out var rev, out bool _);
         return Wrap(result, rev ? count : count + 1);
     }
 
     public ImmutableAvlTree<TKey, TValue> SetItems(IEnumerable<KeyValuePair<TKey, TValue>> items)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        if (items is null) throw new ArgumentNullException(nameof(items));
         return AddRange(items, overwriteOnCollision: true, avoidToSortedMap: false);
     }
 
     public ImmutableAvlTree<TKey, TValue> AddRange(IEnumerable<KeyValuePair<TKey, TValue>> items)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        if (items is null) throw new ArgumentNullException(nameof(items));
         return AddRange(items, overwriteOnCollision: false, avoidToSortedMap: false);
     }
 
     public ImmutableAvlTree<TKey, TValue> Remove(TKey key)
     {
-        ArgumentNullException.ThrowIfNull(key, nameof(key));
+        if (key is null) throw new ArgumentNullException(nameof(key));
         Node result = root.Remove(key, out var mutated);
         return Wrap(result, mutated ? count - 1 : count);
     }
 
     public ImmutableAvlTree<TKey, TValue> RemoveRange(IEnumerable<TKey> keys)
     {
-        ArgumentNullException.ThrowIfNull(keys, nameof(keys));
+        if (keys is null) throw new ArgumentNullException(nameof(keys));
         int c = count;
         Node result = root;
         foreach (var key in keys)
@@ -167,22 +171,15 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
         throw new NotSupportedException();
     }
 
-    IImmutableDictionary<TKey, TValue> IImmutableDictionary<TKey, TValue>.Add(TKey key, TValue value) => this.Add(key, value);
-    IImmutableDictionary<TKey, TValue> IImmutableDictionary<TKey, TValue>.SetItem(TKey key, TValue value) => this.SetItem(key, value);
-    IImmutableDictionary<TKey, TValue> IImmutableDictionary<TKey, TValue>.SetItems(IEnumerable<KeyValuePair<TKey, TValue>> items) => this.SetItems(items);
-    IImmutableDictionary<TKey, TValue> IImmutableDictionary<TKey, TValue>.AddRange(IEnumerable<KeyValuePair<TKey, TValue>> pairs) => this.AddRange(pairs);
-    IImmutableDictionary<TKey, TValue> IImmutableDictionary<TKey, TValue>.RemoveRange(IEnumerable<TKey> keys) => this.RemoveRange(keys);
-    IImmutableDictionary<TKey, TValue> IImmutableDictionary<TKey, TValue>.Remove(TKey key) => this.Remove(key);
-
     public bool ContainsKey(TKey key)
     {
-        ArgumentNullException.ThrowIfNull(key, nameof(key));
+        if (key is null) throw new ArgumentNullException(nameof(key));
         return root.ContainsKey(key);
     }
 
     public bool ContainsValue(TValue value)
     {
-        ArgumentNullException.ThrowIfNull(value, nameof(value));
+        if (value is null) throw new ArgumentNullException(nameof(value));
         return root.ContainsValue(value);
     }
 
@@ -191,15 +188,20 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
         return root.Contains(pair);
     }
 
-    public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value)
+    public bool Contains(TKey key, TValue value)
     {
-        ArgumentNullException.ThrowIfNull(key, nameof(key));
-        return root.TryGetValue(key, out value);
+        return root.Contains(new(key,value));
+    }
+
+    public bool TryGetValue(TKey key, out TValue value)
+    {
+        if (key is null) throw new ArgumentNullException(nameof(key));
+        return root.TryGetValue(key, out value!);
     }
 
     public bool TryGetKey(TKey key, out TKey actualKey)
     {
-        ArgumentNullException.ThrowIfNull(key, nameof(key));
+        if (key is null) throw new ArgumentNullException(nameof(key));
         return root.TryGetKey(key, out actualKey);
     }
 
@@ -213,9 +215,16 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
     void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
     {
-        ArgumentNullException.ThrowIfNull(array, nameof(array));
-        ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex, nameof(arrayIndex));
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(array.Length, arrayIndex + count, nameof(arrayIndex));
+        if (array is null) throw new ArgumentNullException(nameof(array));
+        if (arrayIndex< 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+        }
+
+        if (array.Length > arrayIndex + count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+        }
 
         foreach (KeyValuePair<TKey, TValue> item in this)
         {
@@ -230,7 +239,8 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
     void IDictionary.Add(object key, object? value) => throw new NotSupportedException();
     bool IDictionary.Contains(object key) => this.ContainsKey((TKey)key);
-    IDictionaryEnumerator IDictionary.GetEnumerator()
+
+    IDictionaryEnumerator System.Collections.IDictionary.GetEnumerator()
     {
         return new DictionaryEnumerator(GetEnumerator());
     }
@@ -239,13 +249,21 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
     public Enumerable Reversed(TKey start) => new(this, true, start);
     public Enumerable Reversed(TKey start, TKey end)
     {
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(end, start);
+        if (end.CompareTo(start) < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(end));
+        }
+
         return new(this, true, start, end);
     }
     public Enumerable Range(TKey start) => new(this, false, start);
     public Enumerable Range(TKey start, TKey end)
     {
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(start, end);
+        if (end.CompareTo(start) < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(end));
+        }
+
         return new(this, false, start, end);
     }
 
@@ -303,7 +321,7 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
     internal ImmutableAvlTree<TKey, TValue> AddRange(IEnumerable<KeyValuePair<TKey, TValue>> items, bool overwriteOnCollision, bool avoidToSortedMap)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        if (items is null) throw new ArgumentNullException(nameof(items));
 
         if (IsEmpty && !avoidToSortedMap)
         {
@@ -334,7 +352,7 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
     private ImmutableAvlTree<TKey, TValue> FillFromEmpty(IEnumerable<KeyValuePair<TKey, TValue>> items, bool overwriteOnCollision)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        if (items is null) throw new ArgumentNullException(nameof(items));
         Debug.Assert(IsEmpty);
 
         if (items is ImmutableAvlTree<TKey, TValue> itree)
@@ -403,9 +421,9 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
         private Node(TKey key, TValue value, Node left, Node right, bool frozen)
         {
-            ArgumentNullException.ThrowIfNull(key, nameof(key));
-            ArgumentNullException.ThrowIfNull(left, nameof(left));
-            ArgumentNullException.ThrowIfNull(right, nameof(right));
+            if (key is null) throw new ArgumentNullException(nameof(key));
+            if (left is null) throw new ArgumentNullException(nameof(left));
+            if (right is null) throw new ArgumentNullException(nameof(right));
             Debug.Assert(!frozen || (left.frozen && right.frozen));
 
             this.key = key;
@@ -431,8 +449,15 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
         internal void CopyTo(Array dest, int index, int dictionarySize)
         {
-            ArgumentOutOfRangeException.ThrowIfNegative(index, nameof(index));
-            ArgumentOutOfRangeException.ThrowIfGreaterThan(dest.Length, index + dictionarySize, nameof(index));
+            if (index < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index));
+            }
+
+            if (dest.Length < index + dictionarySize)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index));
+            }
 
             foreach (var item in this)
             {
@@ -442,8 +467,14 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
         internal void CopyTo(KeyValuePair<TKey, TValue>[] dest, int index, int dictionarySize)
         {
-            ArgumentOutOfRangeException.ThrowIfNegative(index, nameof(index));
-            ArgumentOutOfRangeException.ThrowIfGreaterThan(dest.Length, index + dictionarySize, nameof(index));
+            if (index < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index));
+            }
+            if (dest.Length < index + dictionarySize)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index));
+            }
 
             foreach (var item in this)
             {
@@ -663,7 +694,10 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
         internal static Node NodeTreeFromList(IReadOnlyList<KeyValuePair<TKey, TValue>> items, int start, int length)
         {
-            ArgumentNullException.ThrowIfNull(items);
+            if (items is null)
+            {
+                throw new ArgumentNullException(nameof(items));
+            }
             if (length == 0)
             {
                 return EmptyNode;
@@ -679,7 +713,10 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
         internal static Node NodeTreeFromSortedDictionary(SortedDictionary<TKey, TValue> dictionary)
         {
-            ArgumentNullException.ThrowIfNull(dictionary);
+            if (dictionary is null)
+            {
+                throw new ArgumentNullException(nameof(dictionary));
+            }
 
             IReadOnlyList<KeyValuePair<TKey, TValue>> list = [.. dictionary];
             return NodeTreeFromList(list, 0, list.Count);
@@ -938,7 +975,11 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
         {
             get
             {
-                ObjectDisposedException.ThrowIf(root is null, this);
+                if (root is null)
+                {
+                    throw new ObjectDisposedException(nameof(Enumerator));
+                }
+
                 return (current ?? throw new InvalidOperationException()).Value;
             }
         }
@@ -959,7 +1000,11 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
         public bool MoveNext()
         {
-            ObjectDisposedException.ThrowIf(root is null, this);
+            if (root is null)
+            {
+                throw new ObjectDisposedException(nameof(Enumerator));
+            }
+
             if (builder is not null && builder.Version != version)
             {
                 throw new InvalidOperationException("The collection was changed while enumerating");
@@ -984,7 +1029,7 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
             if (hasEnd)
             {
-                var comparison = current.Value.Key.CompareTo(end);
+                var comparison = current.Value.Key.CompareTo(end!);
                 if ((reverse && comparison <= 0) || (!reverse && comparison >= 0))
                 {
                     stackIndex = -1;
@@ -998,7 +1043,11 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
         public void Reset()
         {
-            ObjectDisposedException.ThrowIf(root is null, this);
+            if (root is null)
+            {
+                throw new ObjectDisposedException(nameof(Enumerator));
+            }
+
             Debug.Assert(stack is not null);
 
             current = null;
@@ -1107,7 +1156,7 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
         internal DictionaryEnumerator(IEnumerator<KeyValuePair<TKey, TValue>> inner)
         {
-            ArgumentNullException.ThrowIfNull(inner, nameof(inner));
+            if (inner is null) throw new ArgumentNullException(nameof(inner));
             this.inner = inner;
         }
 
@@ -1121,14 +1170,14 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
     internal abstract class KeysOrValuesCollectionAccessor<T> : ICollection<T>, ICollection
     {
-        private readonly IImmutableDictionary<TKey, TValue> _dictionary;
+        private readonly ImmutableAvlTree<TKey, TValue> _dictionary;
 
         private readonly IEnumerable<T> _keysOrValues;
 
-        protected KeysOrValuesCollectionAccessor(IImmutableDictionary<TKey, TValue> dictionary, IEnumerable<T> keysOrValues)
+        protected KeysOrValuesCollectionAccessor(ImmutableAvlTree<TKey, TValue> dictionary, IEnumerable<T> keysOrValues)
         {
-            ArgumentNullException.ThrowIfNull(dictionary, nameof(dictionary));
-            ArgumentNullException.ThrowIfNull(keysOrValues, nameof(keysOrValues));
+            if (dictionary is null) throw new ArgumentNullException(nameof(dictionary));
+            if (keysOrValues is null) throw new ArgumentNullException(nameof(keysOrValues));
 
             _dictionary = dictionary;
             _keysOrValues = keysOrValues;
@@ -1136,16 +1185,27 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
         public bool IsReadOnly => true;
         public int Count => _dictionary.Count;
-        protected IImmutableDictionary<TKey, TValue> Dictionary => _dictionary;
+        protected ImmutableAvlTree<TKey, TValue> Dictionary => _dictionary;
         public void Add(T item) => throw new NotSupportedException();
         public void Clear() => throw new NotSupportedException();
         public abstract bool Contains(T item);
 
         public void CopyTo(T[] array, int arrayIndex)
         {
-            ArgumentNullException.ThrowIfNull(array);
-            ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex, nameof(arrayIndex));
-            ArgumentOutOfRangeException.ThrowIfGreaterThan(array.Length, arrayIndex + this.Count, nameof(arrayIndex));
+            if (array is null)
+            {
+                throw new ArgumentNullException(nameof(array));
+            }
+
+            if (arrayIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+            }
+
+            if (arrayIndex + Count > array.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+            }
 
             foreach (T item in this)
             {
@@ -1161,9 +1221,20 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
         void ICollection.CopyTo(Array array, int arrayIndex)
         {
-            ArgumentNullException.ThrowIfNull(array);
-            ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex, nameof(arrayIndex));
-            ArgumentOutOfRangeException.ThrowIfGreaterThan(array.Length, arrayIndex + this.Count, nameof(arrayIndex));
+            if (array is null)
+            {
+                throw new ArgumentNullException(nameof(array));
+            }
+
+            if (arrayIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+            }
+
+            if (arrayIndex + Count > array.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+            }
 
             foreach (T item in this)
             {
@@ -1180,7 +1251,7 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
     internal sealed class KeysCollectionAccessor : KeysOrValuesCollectionAccessor<TKey>
     {
-        internal KeysCollectionAccessor(IImmutableDictionary<TKey, TValue> dictionary)
+        internal KeysCollectionAccessor(ImmutableAvlTree<TKey, TValue> dictionary)
             : base(dictionary, dictionary.Keys)
         {
         }
@@ -1190,17 +1261,19 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
     internal sealed class ValuesCollectionAccessor : KeysOrValuesCollectionAccessor<TValue>
     {
-        internal ValuesCollectionAccessor(IImmutableDictionary<TKey, TValue> dictionary)
+        internal ValuesCollectionAccessor(ImmutableAvlTree<TKey, TValue> dictionary)
             : base(dictionary, dictionary.Values)
         {
         }
 
         public override bool Contains(TValue item)
         {
-            if (Dictionary is ImmutableSortedDictionary<TKey, TValue> sortedDictionary)
+#if NET8_0_OR_GREATER
+            if (Dictionary is System.Collections.Immutable.ImmutableSortedDictionary<TKey, TValue> sortedDictionary)
             {
                 return sortedDictionary.ContainsValue(item);
             }
+#endif
 
             if (Dictionary is ImmutableAvlTree<TKey, TValue> dictionary)
             {
@@ -1224,7 +1297,7 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
         internal Builder(ImmutableAvlTree<TKey, TValue> map)
         {
-            ArgumentNullException.ThrowIfNull(map, nameof(map));
+            if (map is null) throw new ArgumentNullException(nameof(map));
             root = map.root;
             count = map.count;
             immutable = map;
@@ -1288,7 +1361,11 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
         public ref readonly TValue ValueRef(TKey key)
         {
-            ArgumentNullException.ThrowIfNull(key);
+            if (key is null)
+            {
+                throw new ArgumentNullException(nameof(key));
+            }
+
             return ref root.ValueRef(key);
         }
         bool IDictionary.IsFixedSize => false;
@@ -1358,11 +1435,11 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
             return mutated;
         }
 
-        public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out TValue value) => Root.TryGetValue(key, out value!);
+        public bool TryGetValue(TKey key, out TValue value) => Root.TryGetValue(key, out value!);
 
         public bool TryGetKey(TKey equalKey, out TKey actualKey)
         {
-            ArgumentNullException.ThrowIfNull(equalKey, nameof(equalKey));
+            if (equalKey is null) throw new ArgumentNullException(nameof(equalKey));
             return this.Root.TryGetKey(equalKey, out actualKey);
         }
 
@@ -1400,7 +1477,10 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
         public void AddRange(IEnumerable<KeyValuePair<TKey, TValue>> items)
         {
-            ArgumentNullException.ThrowIfNull(items);
+            if (items is null)
+            {
+                throw new ArgumentNullException(nameof(items));
+            }
 
             foreach (KeyValuePair<TKey, TValue> pair in items)
             {
@@ -1410,7 +1490,10 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
         public void RemoveRange(IEnumerable<TKey> keys)
         {
-            ArgumentNullException.ThrowIfNull(keys);
+            if (keys is null)
+            {
+                throw new ArgumentNullException(nameof(keys));
+            }
 
             foreach (TKey key in keys)
             {
@@ -1424,7 +1507,7 @@ public class ImmutableAvlTree<TKey, TValue> : IImmutableDictionary<TKey, TValue>
 
         public TValue GetValueOrDefault(TKey key, TValue defaultValue)
         {
-            ArgumentNullException.ThrowIfNull(key, nameof(key));
+            if (key is null) throw new ArgumentNullException(nameof(key));
 
             TValue value;
             if (TryGetValue(key, out value!))
@@ -1517,7 +1600,11 @@ internal sealed class ImmutableDictionaryDebuggerProxy<TKey, TValue> where TKey 
     /// <param name="dictionary">The dictionary to show in the debugger.</param>
     public ImmutableDictionaryDebuggerProxy(IReadOnlyDictionary<TKey, TValue> dictionary)
     {
-        ArgumentNullException.ThrowIfNull(dictionary);
+        if (dictionary is null)
+        {
+            throw new ArgumentNullException(nameof(dictionary));
+        }
+
         _dictionary = dictionary;
     }
 
@@ -1571,7 +1658,7 @@ public static class ToImmutableAvlTreeExtensions
         where TKey : IComparable<TKey>
         where TValue : IComparable<TValue>
     {
-        ArgumentNullException.ThrowIfNull(entries, nameof(entries));
+        if (entries is null) throw new ArgumentNullException(nameof(entries));
         return ImmutableAvlTree.CreateRange(entries);
     }
 }

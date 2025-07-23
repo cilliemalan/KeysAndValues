@@ -83,7 +83,7 @@ public static class KeyValueStoreExtensions
                 };
             }
 
-            return store.Apply(ops.AsSpan(..nkeys));
+            return store.Apply(ops.AsSpan(0, nkeys));
         }
         finally
         {
@@ -162,7 +162,7 @@ public static class KeyValueStoreExtensions
                 };
             }
 
-            return store.Apply(ops.AsSpan(..nkeys));
+            return store.Apply(ops.AsSpan(0, nkeys));
         }
         finally
         {

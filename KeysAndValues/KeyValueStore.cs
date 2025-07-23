@@ -94,7 +94,7 @@ public sealed partial class KeyValueStore
             }
             else
             {
-                Thread.Sleep(i * Random.Shared.Next(120));
+                Thread.Sleep(i * 5213423 % 120 * i);
             }
         }
     }
