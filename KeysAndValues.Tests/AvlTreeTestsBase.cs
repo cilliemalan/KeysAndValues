@@ -170,7 +170,7 @@ public abstract class AvlTreeTestsBase
     [Fact]
     public void SetItemTest()
     {
-        IImmutableDictionary<string, int> map = this.Empty<string, int>()
+        ImmutableAvlTree<string, int> map = this.Empty<string, int>()
             .SetItem("Microsoft", 100)
             .SetItem("Corporation", 50);
         Assert.Equal(2, map.Count);
@@ -180,7 +180,7 @@ public abstract class AvlTreeTestsBase
         Assert.Equal(200, map["Microsoft"]);
 
         // Set it to the same thing again and make sure it's all good.
-        IImmutableDictionary<string, int> sameMap = map.SetItem("Microsoft", 200);
+        ImmutableAvlTree<string, int> sameMap = map.SetItem("Microsoft", 200);
         Assert.Same(map, sameMap);
     }
 
@@ -192,7 +192,7 @@ public abstract class AvlTreeTestsBase
                 { "Microsoft", 100 },
                 { "Corporation", 50 },
             };
-        IImmutableDictionary<string, int> map = this.Empty<string, int>().SetItems(template);
+        ImmutableAvlTree<string, int> map = this.Empty<string, int>().SetItems(template);
         Assert.Equal(2, map.Count);
 
         var changes = new Dictionary<string, int>
@@ -242,7 +242,7 @@ public abstract class AvlTreeTestsBase
     [Fact]
     public void IndexGetTest()
     {
-        IImmutableDictionary<int, int> map = this.Empty<int, int>().Add(3, 5);
+        ImmutableAvlTree<int, int> map = this.Empty<int, int>().Add(3, 5);
         Assert.Equal(5, map[3]);
     }
 
@@ -252,7 +252,7 @@ public abstract class AvlTreeTestsBase
     [Fact]
     public void GetHashCodeTest()
     {
-        IImmutableDictionary<string, int> dictionary = Empty<string, int>();
+        ImmutableAvlTree<string, int> dictionary = Empty<string, int>();
         Assert.Equal(EqualityComparer<object>.Default.GetHashCode(dictionary), dictionary.GetHashCode());
     }
 
@@ -360,7 +360,7 @@ public abstract class AvlTreeTestsBase
 
         Assert.NotSame(alpha, Alpha);
 
-        IImmutableDictionary<string, int> dictionary = Empty<int>()
+        ImmutableAvlTree<string, int> dictionary = Empty<int>()
             .Add(alpha, 1);
 
         string actualKey;
@@ -375,7 +375,7 @@ public abstract class AvlTreeTestsBase
         Assert.Same(beta, actualKey);
     }
 
-    protected void EmptyTestHelper<K, V>(IImmutableDictionary<K, V> empty, K someKey)
+    protected void EmptyTestHelper<K, V>(ImmutableAvlTree<K, V> empty, K someKey)
         where V : IComparable<V>
         where K : IComparable<K>
     {
@@ -386,7 +386,7 @@ public abstract class AvlTreeTestsBase
         Assert.Equal(0, empty.Values.Count());
         Assert.Same(EqualityComparer<V>.Default, GetValueComparer(empty));
         Assert.False(empty.ContainsKey(someKey));
-        Assert.False(empty.Contains(new KeyValuePair<K, V>(someKey, default(V)!)));
+        Assert.DoesNotContain(new KeyValuePair<K, V>(someKey, default(V)!), empty);
         Assert.Equal(default(V), empty.GetValueOrDefault(someKey));
 
         V value;
@@ -394,7 +394,7 @@ public abstract class AvlTreeTestsBase
         Assert.Equal(default(V), value);
     }
 
-    protected void AddExistingKeySameValueTestHelper<TKey, TValue>(IImmutableDictionary<TKey, TValue> map, TKey key, TValue value1, TValue value2)
+    protected void AddExistingKeySameValueTestHelper<TKey, TValue>(ImmutableAvlTree<TKey, TValue> map, TKey key, TValue value1, TValue value2)
         where TValue : IComparable<TValue>
         where TKey : IComparable<TKey>
     {
@@ -420,7 +420,7 @@ public abstract class AvlTreeTestsBase
     /// Adding a key-value pair to a map where that key already exists, but with a different value, cannot fit the
     /// semantic of "adding", either by just returning or mutating the value on the existing key.  Throwing is the only reasonable response.
     /// </remarks>
-    protected void AddExistingKeyDifferentValueTestHelper<TKey, TValue>(IImmutableDictionary<TKey, TValue> map, TKey key, TValue value1, TValue value2)
+    protected void AddExistingKeyDifferentValueTestHelper<TKey, TValue>(ImmutableAvlTree<TKey, TValue> map, TKey key, TValue value1, TValue value2)
         where TValue : IComparable<TValue>
         where TKey : IComparable<TKey>
     {
@@ -428,13 +428,13 @@ public abstract class AvlTreeTestsBase
         Assert.NotNull(key);
         Assert.False(GetValueComparer(map).Equals(value1, value2));
 
-        IImmutableDictionary<TKey, TValue> map1 = map.Add(key, value1);
-        IImmutableDictionary<TKey, TValue> map2 = map.Add(key, value2);
+        ImmutableAvlTree<TKey, TValue> map1 = map.Add(key, value1);
+        ImmutableAvlTree<TKey, TValue> map2 = map.Add(key, value2);
         Assert.Throws<ArgumentException>(null, () => map1.Add(key, value2));
         Assert.Throws<ArgumentException>(null, () => map2.Add(key, value1));
     }
 
-    protected void ContainsKeyTestHelper<TKey, TValue>(IImmutableDictionary<TKey, TValue> map, TKey key, TValue value)
+    protected void ContainsKeyTestHelper<TKey, TValue>(ImmutableAvlTree<TKey, TValue> map, TKey key, TValue value)
         where TValue : IComparable<TValue>
         where TKey : IComparable<TKey>
     {
@@ -442,17 +442,17 @@ public abstract class AvlTreeTestsBase
         Assert.True(map.Add(key, value).ContainsKey(key));
     }
 
-    protected void ContainsTestHelper<TKey, TValue>(IImmutableDictionary<TKey, TValue> map, TKey key, TValue value)
+    protected void ContainsTestHelper<TKey, TValue>(ImmutableAvlTree<TKey, TValue> map, TKey key, TValue value)
         where TValue : IComparable<TValue>
         where TKey : IComparable<TKey>
     {
-        Assert.False(map.Contains(new KeyValuePair<TKey, TValue>(key, value)));
+        Assert.DoesNotContain(new KeyValuePair<TKey, TValue>(key, value), map);
         Assert.False(map.Contains(key, value));
-        Assert.True(map.Add(key, value).Contains(new KeyValuePair<TKey, TValue>(key, value)));
+        Assert.Contains(new KeyValuePair<TKey, TValue>(key, value), map.Add(key, value));
         Assert.True(map.Add(key, value).Contains(key, value));
     }
 
-    protected void RemoveTestHelper<TKey, TValue>(IImmutableDictionary<TKey, TValue> map, TKey key)
+    protected void RemoveTestHelper<TKey, TValue>(ImmutableAvlTree<TKey, TValue> map, TKey key)
         where TValue : IComparable<TValue>
         where TKey : IComparable<TKey>
     {
@@ -461,20 +461,20 @@ public abstract class AvlTreeTestsBase
         Assert.Same(map, map.RemoveRange(Enumerable.Empty<TKey>()));
 
         // substantial remove
-        IImmutableDictionary<TKey, TValue> addedMap = map.Add(key, default(TValue)!);
-        IImmutableDictionary<TKey, TValue> removedMap = addedMap.Remove(key);
+        ImmutableAvlTree<TKey, TValue> addedMap = map.Add(key, default(TValue)!);
+        ImmutableAvlTree<TKey, TValue> removedMap = addedMap.Remove(key);
         Assert.NotSame(addedMap, removedMap);
         Assert.False(removedMap.ContainsKey(key));
     }
 
-    protected abstract IImmutableDictionary<TKey, TValue> Empty<TKey, TValue>()
+    protected abstract ImmutableAvlTree<TKey, TValue> Empty<TKey, TValue>()
         where TValue : IComparable<TValue>
         where TKey : IComparable<TKey>;
 
-    protected abstract IImmutableDictionary<string, TValue> Empty<TValue>()
+    protected abstract ImmutableAvlTree<string, TValue> Empty<TValue>()
         where TValue : IComparable<TValue>;
 
-    protected abstract IEqualityComparer<TValue> GetValueComparer<TKey, TValue>(IImmutableDictionary<TKey, TValue> dictionary)
+    protected abstract IEqualityComparer<TValue> GetValueComparer<TKey, TValue>(ImmutableAvlTree<TKey, TValue> dictionary)
         where TValue : IComparable<TValue>
         where TKey : IComparable<TKey>;
 }

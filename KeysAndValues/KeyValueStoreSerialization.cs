@@ -1,6 +1,7 @@
 ﻿namespace KeysAndValues;
 
-using KeysAndValues.Internal;
+// TODO: net standard 2.0
+#if !NETSTANDARD2_0
 using System.Security.Cryptography;
 
 /// <summary>
@@ -39,7 +40,7 @@ public static class KeyValueStoreSerialization
             sha.AppendData(node.Value.Span);
         }
 
-        sha.GetCurrentHash(tmp);
+        sha.TryGetHashAndReset(tmp, out _);
         stream.Write(tmp);
     }
 
@@ -69,7 +70,7 @@ public static class KeyValueStoreSerialization
         kvs = null;
         using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         Span<byte> tmp = stackalloc byte[32];
-        if (!stream.TryReadExactly(tmp[..12]))
+        if (!TryReadExactly(stream, tmp[..12]))
         {
             return false;
         }
@@ -85,26 +86,26 @@ public static class KeyValueStoreSerialization
         var builder = ImmutableAvlTree<Mem, Mem>.Empty.ToBuilder();
         for (int i = 0; i < count; i++)
         {
-            if (!stream.TryReadExactly(tmp[..4]))
+            if (!TryReadExactly(stream, tmp[..4]))
             {
                 return false;
             }
             sha.AppendData(tmp[..4]);
             int keyLength = BitConverter.ToInt32(tmp);
             var keyMem = new byte[keyLength];
-            if (!stream.TryReadExactly(keyMem))
+            if (!TryReadExactly(stream, keyMem))
             {
                 return false;
             }
             sha.AppendData(keyMem);
-            if (!stream.TryReadExactly(tmp[..4]))
+            if (!TryReadExactly(stream, tmp[..4]))
             {
                 return false;
             }
             sha.AppendData(tmp[..4]);
             int valueLength = BitConverter.ToInt32(tmp);
             var valueMem = new byte[valueLength];
-            if (!stream.TryReadExactly(valueMem))
+            if (!TryReadExactly(stream, valueMem))
             {
                 return false;
             }
@@ -112,9 +113,9 @@ public static class KeyValueStoreSerialization
             builder.Add(new(keyMem), new(valueMem));
         }
 
-        sha.GetCurrentHash(tmp);
+        sha.TryGetHashAndReset(tmp, out _);
         Span<byte> tmp2 = stackalloc byte[32];
-        if (!stream.TryReadExactly(tmp2))
+        if (!TryReadExactly(stream, tmp2))
         {
             return false;
         }
@@ -126,4 +127,21 @@ public static class KeyValueStoreSerialization
         kvs = new(sequence, builder.ToImmutable());
         return true;
     }
+
+    private static bool TryReadExactly(Stream stream, Span<byte> buffer)
+    {
+        while (buffer.Length > 0)
+        {
+            int amt = stream.Read(buffer);
+            if (amt == 0)
+            {
+                return false;
+            }
+            buffer = buffer[amt..];
+        }
+
+        return true;
+    }
 }
+
+#endif

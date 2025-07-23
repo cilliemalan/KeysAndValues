@@ -122,7 +122,7 @@ public class AvlTreeTests : AvlTreeTestsBase
     [Fact]
     public void ToUnorderedTest()
     {
-        IImmutableDictionary<int, GenericParameterHelper> sortedMap = Empty<int, GenericParameterHelper>().AddRange(Enumerable.Range(1, 100).Select(n => new KeyValuePair<int, GenericParameterHelper>(n, new GenericParameterHelper(n))));
+        ImmutableAvlTree<int, GenericParameterHelper> sortedMap = Empty<int, GenericParameterHelper>().AddRange(Enumerable.Range(1, 100).Select(n => new KeyValuePair<int, GenericParameterHelper>(n, new GenericParameterHelper(n))));
         ImmutableDictionary<int, GenericParameterHelper> unsortedMap = sortedMap.ToImmutableDictionary();
         Assert.IsAssignableFrom<ImmutableDictionary<int, GenericParameterHelper>>(unsortedMap);
         Assert.Equal(sortedMap.Count, unsortedMap.Count);
@@ -138,8 +138,8 @@ public class AvlTreeTests : AvlTreeTestsBase
                 new KeyValuePair<string,string>("c", "d"),
             };
 
-        IImmutableDictionary<string, string> map = NewEmpty<string, string>();
-        IImmutableDictionary<string, string> actual = map.AddRange(uniqueEntries);
+        ImmutableAvlTree<string, string> map = NewEmpty<string, string>();
+        ImmutableAvlTree<string, string> actual = map.AddRange(uniqueEntries);
         Assert.Equal(2, actual.Count);
     }
 
@@ -152,8 +152,8 @@ public class AvlTreeTests : AvlTreeTestsBase
                 new KeyValuePair<string,string>("a", "b"),
             };
 
-        IImmutableDictionary<string, string> map = NewEmpty<string, string>();
-        IImmutableDictionary<string, string> actual = map.AddRange(uniqueEntries);
+        ImmutableAvlTree<string, string> map = NewEmpty<string, string>();
+        ImmutableAvlTree<string, string> actual = map.AddRange(uniqueEntries);
         Assert.Equal(1, actual.Count);
     }
 
@@ -172,7 +172,7 @@ public class AvlTreeTests : AvlTreeTestsBase
                 new KeyValuePair<string,string>("a", "d"),
             };
 
-        IImmutableDictionary<string, string> map = NewEmpty<string, string>();
+        ImmutableAvlTree<string, string> map = NewEmpty<string, string>();
         Assert.Throws<ArgumentException>(null, () => map.AddRange(uniqueEntries));
     }
 
@@ -351,8 +351,9 @@ public class AvlTreeTests : AvlTreeTestsBase
         }
         Assert.Equal(numEntries, cnt);
 
-        var d = (IDictionary)s;
-        Assert.Equal(numEntries, d.Cast<DictionaryEntry>().Count());
+        var d = (System.Collections.IDictionary)s;
+        Assert.IsAssignableFrom<IDictionaryEnumerator>(d.GetEnumerator());
+        Assert.Equal(numEntries, d.Cast<object>().Count());
     }
 
     [Theory]
@@ -406,7 +407,7 @@ public class AvlTreeTests : AvlTreeTestsBase
         Assert.Equal(numEntries, cnt);
 
         var d = (IDictionary)s;
-        Assert.Equal(numEntries, d.Cast<DictionaryEntry>().Count());
+        Assert.Equal(numEntries, d.Cast<object>().Count());
     }
 
     [Fact]
@@ -502,7 +503,7 @@ public class AvlTreeTests : AvlTreeTestsBase
         }
     }
 
-    protected override IImmutableDictionary<TKey, TValue> Empty<TKey, TValue>()
+    protected override ImmutableAvlTree<TKey, TValue> Empty<TKey, TValue>()
     {
         return NewEmpty<TKey, TValue>();
     }
@@ -514,12 +515,12 @@ public class AvlTreeTests : AvlTreeTestsBase
         return ImmutableAvlTree<TKey, TValue>.Empty;
     }
 
-    protected override IImmutableDictionary<string, TValue> Empty<TValue>()
+    protected override ImmutableAvlTree<string, TValue> Empty<TValue>()
     {
         return ImmutableAvlTree.Create<string, TValue>();
     }
 
-    protected override IEqualityComparer<TValue> GetValueComparer<TKey, TValue>(IImmutableDictionary<TKey, TValue> dictionary)
+    protected override IEqualityComparer<TValue> GetValueComparer<TKey, TValue>(ImmutableAvlTree<TKey, TValue> dictionary)
     {
         return EqualityComparer<TValue>.Default;
     }

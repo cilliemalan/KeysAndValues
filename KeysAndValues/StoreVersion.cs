@@ -39,7 +39,11 @@ public sealed class StoreVersion : IEquatable<StoreVersion>, IComparable<StoreVe
     /// <exception cref="ArgumentNullException">Something was null.</exception>
     public StoreVersion(long sequence, ImmutableAvlTree<Mem, Mem> data)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(sequence, 0);
+        if (sequence <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sequence));
+        }
+
         Sequence = sequence;
         Data = data ?? throw new ArgumentNullException(nameof(data));
     }

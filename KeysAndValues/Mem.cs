@@ -101,13 +101,17 @@ public readonly struct Mem : IEquatable<Mem>, IComparable<Mem>
         int index = 0;
         while (index + 4 <= l)
         {
-            hash = System.Numerics.BitOperations.RotateLeft(hash + u32data[index / 4] * 3266489917U, 17) * 668265263U;
+            uint tmp = hash + u32data[index / 4] * 3266489917U;
+            tmp = (tmp << 17) | (tmp >> 15);
+            hash = tmp * 668265263U;
             index += 4;
         }
 
         while (index < l)
         {
-            hash = System.Numerics.BitOperations.RotateLeft(hash + u8data[index] * 2654435761U, 13) * 2246822519U;
+            uint tmp = hash + u8data[index] * 2654435761U;
+            tmp = (tmp << 13) | (tmp >> 19);
+            hash = tmp * 2246822519U;
             index++;
         }
 
@@ -126,6 +130,7 @@ public readonly struct Mem : IEquatable<Mem>, IComparable<Mem>
     public static implicit operator ReadOnlyMemory<byte>(in Mem mem) => mem.memory;
     /// <inheritdoc />
     public static implicit operator Mem(in ReadOnlyMemory<byte> mem) => new(mem);
+
     /// <inheritdoc />
     public static implicit operator Mem(string mem) => new(Encoding.UTF8.GetBytes(mem));
     /// <inheritdoc />
