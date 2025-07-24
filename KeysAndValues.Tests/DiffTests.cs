@@ -31,7 +31,6 @@ public class DiffTests
     }
 
     [Theory]
-    [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(5)]
@@ -41,7 +40,13 @@ public class DiffTests
     [InlineData(20)]
     [InlineData(100)]
     [InlineData(1000)]
-    public void ShuffleDiffTest(int count)
+    [InlineData(10, 10)]
+    [InlineData(12, 10)]
+    [InlineData(15, 20)]
+    [InlineData(20, 20)]
+    [InlineData(100, 100)]
+    [InlineData(1000, 1000)]
+    public void ShuffleDiffTest(int count, int numChanges = 0)
     {
         var r = new Random(count * 17);
 
@@ -50,7 +55,12 @@ public class DiffTests
                 .Select(i => new KeyValuePair<Mem, Mem>($"key{i}", Guid.NewGuid().ToString("N"))));
 
         var da = baseTree;
-        var db = ChangeAround(baseTree, r);
+        while (numChanges == 0)
+        {
+            numChanges = r.Next(count + 1);
+        }
+
+        var db = ChangeAround(baseTree, r, numChanges);
 
         var diffa2b = DifferenceCalculation.CalculateDifference(da, db);
         CheckDiff(da, db, diffa2b);
@@ -59,6 +69,8 @@ public class DiffTests
         var diffb2a = DifferenceCalculation.CalculateDifference(db, da);
         CheckDiff(db, da, diffb2a);
         CheckApplication(db, da, diffb2a);
+
+        Assert.Equal(diffa2b.Length, diffb2a.Length);
     }
 
     private static void CheckDiff(ImmutableAvlTree<Mem, Mem> d1, ImmutableAvlTree<Mem, Mem> d2, ReadOnlySpan<ChangeOperation<Mem, Mem>> diff)
@@ -101,32 +113,35 @@ public class DiffTests
     private static ImmutableAvlTree<Mem, Mem> ChangeAround(
         ImmutableAvlTree<Mem, Mem> d1,
         Random r,
-        int numChanges = 0)
+        int numChanges)
     {
         var keys = d1.Keys.ToList();
-
-        if (numChanges == 0)
-        {
-            numChanges = r.Next(d1.Count);
-        }
+        int nr = d1.Count + 1;
 
         var b = d1.ToBuilder();
         for (int i = 0; i < numChanges; i++)
         {
-            bool isDelete = r.Next(10) < 4;
+            bool isAdd = r.Next(10) < 2;
+            if (isAdd)
+            {
+                var nkey = $"key{++nr}";
+                var nval = Guid.NewGuid().ToString("N");
+                b.Add(nkey, nval);
+            }
+
+            bool isDelete = r.Next(10) < 3;
             if (isDelete)
             {
                 var ixToDelete = r.Next(keys.Count);
                 var keyToDelete = keys[ixToDelete];
                 b.Remove(keyToDelete);
                 keys.RemoveAt(ixToDelete);
+                continue;
             }
-            else
-            {
-                var ixToChange = r.Next(keys.Count);
-                var keyToChange = keys[ixToChange];
-                b[keyToChange] = Guid.NewGuid().ToString("N");
-            }
+
+            var ixToChange = r.Next(keys.Count);
+            var keyToChange = keys[ixToChange];
+            b[keyToChange] = Guid.NewGuid().ToString("N");
         }
 
         return b.ToImmutable();
