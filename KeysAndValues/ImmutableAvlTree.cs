@@ -6,7 +6,7 @@ namespace KeysAndValues;
 using System.Collections;
 using System.ComponentModel;
 
-
+#pragma warning disable IDE0079 // Remove unnecessary suppression
 #pragma warning disable CS8601 // Possible null reference assignment.
 #pragma warning disable CS8602 // Dereference of a possibly null reference.
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
@@ -15,6 +15,7 @@ using System.ComponentModel;
 #pragma warning disable IDE0028 // Simplify collection initialization
 
 [DebuggerDisplay("Count = {Count}")]
+#pragma warning restore IDE0079 // Remove unnecessary suppression
 [DebuggerTypeProxy(typeof(ImmutableDictionaryDebuggerProxy<,>))]
 public static class ImmutableAvlTree
 {

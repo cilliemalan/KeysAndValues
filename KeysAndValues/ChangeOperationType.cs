@@ -11,6 +11,11 @@ public enum ChangeOperationType
     None,
 
     /// <summary>
+    /// An add operation.
+    /// </summary>
+    Add,
+
+    /// <summary>
     /// A set operation.
     /// </summary>
     Set,

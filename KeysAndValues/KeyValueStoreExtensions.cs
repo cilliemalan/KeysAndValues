@@ -65,15 +65,15 @@ public static class KeyValueStoreExtensions
     {
         int nkeys = 0;
         int nkcap = keys is ICollection<Mem> ckeys ? ckeys.Count : 1;
-        ChangeOperation[] ops = ArrayPool<ChangeOperation>.Shared.Rent(nkcap);
+        ChangeOperation<Mem, Mem>[] ops = ArrayPool<ChangeOperation<Mem, Mem>>.Shared.Rent(nkcap);
         try
         {
             foreach (var k in keys)
             {
                 if (nkeys >= ops.Length)
                 {
-                    ArrayPool<ChangeOperation>.Shared.Return(ops);
-                    ops = ArrayPool<ChangeOperation>.Shared.Rent(nkeys + nkeys / 2 + 1);
+                    ArrayPool<ChangeOperation<Mem, Mem>>.Shared.Return(ops);
+                    ops = ArrayPool<ChangeOperation<Mem, Mem>>.Shared.Rent(nkeys + nkeys / 2 + 1);
                 }
 
                 ops[nkeys++] = new()
@@ -87,7 +87,7 @@ public static class KeyValueStoreExtensions
         }
         finally
         {
-            ArrayPool<ChangeOperation>.Shared.Return(ops);
+            ArrayPool<ChangeOperation<Mem, Mem>>.Shared.Return(ops);
         }
     }
 
@@ -143,15 +143,15 @@ public static class KeyValueStoreExtensions
     {
         int nkeys = 0;
         int nkcap = entries is ICollection<KeyValuePair<Mem, Mem>> kc ? kc.Count : 1;
-        var ops = ArrayPool<ChangeOperation>.Shared.Rent(nkcap);
+        var ops = ArrayPool<ChangeOperation<Mem, Mem>>.Shared.Rent(nkcap);
         try
         {
             foreach (var entry in entries)
             {
                 if (nkeys >= ops.Length)
                 {
-                    ArrayPool<ChangeOperation>.Shared.Return(ops);
-                    ops = ArrayPool<ChangeOperation>.Shared.Rent(nkeys + nkeys / 2 + 1);
+                    ArrayPool<ChangeOperation<Mem, Mem>>.Shared.Return(ops);
+                    ops = ArrayPool<ChangeOperation<Mem, Mem>>.Shared.Rent(nkeys + nkeys / 2 + 1);
                 }
 
                 ops[nkeys++] = new()
@@ -166,7 +166,7 @@ public static class KeyValueStoreExtensions
         }
         finally
         {
-            ArrayPool<ChangeOperation>.Shared.Return(ops);
+            ArrayPool<ChangeOperation<Mem, Mem>>.Shared.Return(ops);
         }
     }
 
@@ -188,12 +188,12 @@ public static class KeyValueStoreExtensions
     /// <param name="store"></param>
     /// <param name="key"></param>
     /// <returns>The new store version</returns>
-    public static StoreVersion Delete(this KeyValueStore store, ReadOnlySpan<byte> key)
+    public static StoreVersion Delete(this KeyValueStore store, ReadOnlyMemory<byte> key)
     {
-        return store.Apply([new() { Type = ChangeOperationType.Set, Key = key.ToArray(), Value = default }]);
+        return store.Apply([new() { Type = ChangeOperationType.Set, Key = key, Value = default }]);
     }
 
-    internal static void Apply(this ImmutableAvlTree<Mem, Mem>.Builder builder, ReadOnlySpan<ChangeOperation> operations)
+    internal static void Apply(this ImmutableAvlTree<Mem, Mem>.Builder builder, ReadOnlySpan<ChangeOperation<Mem, Mem>> operations)
     {
         for (int i = 0; i < operations.Length; i++)
         {
@@ -201,6 +201,10 @@ public static class KeyValueStoreExtensions
 
             switch (operation.Type)
             {
+                case ChangeOperationType.Add:
+                    //builder.Add(operation.Key, operation.Value);
+                    builder[operation.Key] = operation.Value;
+                    break;
                 case ChangeOperationType.Set:
                     builder[operation.Key] = operation.Value;
                     break;
@@ -213,7 +217,7 @@ public static class KeyValueStoreExtensions
         }
     }
 
-    internal static ImmutableAvlTree<Mem, Mem> Apply(this ImmutableAvlTree<Mem, Mem> store, ReadOnlySpan<ChangeOperation> operations)
+    internal static ImmutableAvlTree<Mem, Mem> Apply(this ImmutableAvlTree<Mem, Mem> store, ReadOnlySpan<ChangeOperation<Mem, Mem>> operations)
     {
         var builder = store.ToBuilder();
         builder.Apply(operations);

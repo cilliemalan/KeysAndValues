@@ -92,7 +92,7 @@ public static class KeyValueStoreSerialization
     /// <param name="changes">Changes to serialize.</param>
     /// <param name="stream">The stream to serialize to.</param>
     public static void SerializeChangeBatch(
-        in ChangeBatch changes,
+        in ChangeBatch<Mem, Mem> changes,
         Stream stream)
     {
         using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
@@ -123,7 +123,7 @@ public static class KeyValueStoreSerialization
     /// <returns><c>true</c> if the change batch could be deserialized.</returns>
     public static bool TryDeserializeChangeBatch(
         Stream stream,
-        out ChangeBatch changes)
+        out ChangeBatch<Mem, Mem> changes)
     {
         changes = default;
 
@@ -151,7 +151,7 @@ public static class KeyValueStoreSerialization
             return false;
         }
 
-        var ops = new ChangeOperation[numOps];
+        var ops = new ChangeOperation<Mem, Mem>[numOps];
         for (int i = 0; i < numOps; i++)
         {
             if (!TryDeserializeChangeOperation(stream, sha, out ops[i]))
@@ -178,7 +178,7 @@ public static class KeyValueStoreSerialization
     private static bool TryDeserializeChangeOperation(
         Stream stream,
         IncrementalHash? sha,
-        out ChangeOperation op)
+        out ChangeOperation<Mem, Mem> op)
     {
         Span<byte> tmp = stackalloc byte[4];
         if (!TryReadExactly(stream, tmp))
@@ -206,7 +206,7 @@ public static class KeyValueStoreSerialization
     }
 
     private static void SerializeChangeOperation(
-        ChangeOperation op,
+        ChangeOperation<Mem, Mem> op,
         Stream stream,
         IncrementalHash? sha)
     {

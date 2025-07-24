@@ -13,7 +13,7 @@ public sealed partial class KeyValueStore
     /// <param name="keyValueStore">The store that triggered the event.</param>
     /// <param name="changes">Operations for the change</param>
     /// <param name="newVersion">The new version after the change.</param>
-    public delegate void ChangeHandler(KeyValueStore keyValueStore, ChangeBatch changes, StoreVersion newVersion);
+    public delegate void ChangeHandler(KeyValueStore keyValueStore, ChangeBatch<Mem, Mem> changes, StoreVersion newVersion);
 
     private StoreVersion store = StoreVersion.Empty;
 
@@ -72,7 +72,7 @@ public sealed partial class KeyValueStore
     /// </summary>
     /// <param name="operations">The operations to store</param>
     /// <returns>The version object after the change.</returns>
-    public StoreVersion Apply(ReadOnlySpan<ChangeOperation> operations)
+    public StoreVersion Apply(ReadOnlySpan<ChangeOperation<Mem, Mem>> operations)
     {
         for (int i = 0; ; i++)
         {

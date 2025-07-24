@@ -5,7 +5,9 @@
 /// </summary>
 /// <param name="sequence">The sequence number after the change.</param>
 /// <param name="operations">The operations for the change.</param>
-public readonly ref struct ChangeBatch(long sequence, ReadOnlySpan<ChangeOperation> operations)
+public readonly ref struct ChangeBatch<TKey, TValue>(long sequence, ReadOnlySpan<ChangeOperation<TKey, TValue>> operations)
+    where TValue : IComparable<TValue>
+    where TKey : IComparable<TKey>
 {
     /// <summary>
     /// The sequence number after the change.
@@ -15,5 +17,5 @@ public readonly ref struct ChangeBatch(long sequence, ReadOnlySpan<ChangeOperati
     /// <summary>
     /// The operations for the change.
     /// </summary>
-    public ReadOnlySpan<ChangeOperation> Operations { get; } = operations;
+    public ReadOnlySpan<ChangeOperation<TKey, TValue>> Operations { get; } = operations;
 }

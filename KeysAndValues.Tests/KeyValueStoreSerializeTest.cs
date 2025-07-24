@@ -20,11 +20,11 @@ public class KeyValueStoreSerializeTest
     {
         using var ms = new MemoryStream();
         var kvps = Corpus.GenerateUnsorted(10);
-        ChangeBatch cb = new(123412341234,
+        ChangeBatch<Mem, Mem> cb = new(123412341234,
             kvps.Select(kvp =>
             {
                 var type = kvp.Key.Span[0] % 2 == 0 ? ChangeOperationType.Set : ChangeOperationType.Delete;
-                return new ChangeOperation
+                return new ChangeOperation<Mem, Mem>
                 {
                     Type = type,
                     Key = kvp.Key,
