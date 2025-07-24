@@ -11,9 +11,9 @@ public sealed partial class KeyValueStore
     /// Handler for change events.
     /// </summary>
     /// <param name="keyValueStore">The store that triggered the event.</param>
-    /// <param name="operations">Operations for the change</param>
+    /// <param name="changes">Operations for the change</param>
     /// <param name="newVersion">The new version after the change.</param>
-    public delegate void ChangeHandler(KeyValueStore keyValueStore, in ReadOnlySpan<ChangeOperation> operations, StoreVersion newVersion);
+    public delegate void ChangeHandler(KeyValueStore keyValueStore, ChangeBatch changes, StoreVersion newVersion);
 
     private StoreVersion store = StoreVersion.Empty;
 
@@ -84,7 +84,7 @@ public sealed partial class KeyValueStore
             bool exchanged = Interlocked.CompareExchange(ref store, newStore, s) == s;
             if (exchanged)
             {
-                Changed?.Invoke(this, operations, newStore);
+                Changed?.Invoke(this, new(newStore.Sequence, operations), newStore);
                 return newStore;
             }
 

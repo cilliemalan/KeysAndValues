@@ -1,5 +1,7 @@
 ﻿namespace KeysAndValues;
 
+using System.IO;
+
 // TODO: net standard 2.0
 #if !NETSTANDARD2_0
 using System.Security.Cryptography;
@@ -28,35 +30,11 @@ public static class KeyValueStoreSerialization
 
         foreach (var node in snap)
         {
-            BitConverter.TryWriteBytes(tmp[0..4], node.Key.Length);
-            BitConverter.TryWriteBytes(tmp[4..8], node.Value.Length);
-            stream.Write(tmp[0..4]);
-            sha.AppendData(tmp[0..4]);
-            stream.Write(node.Key.Span);
-            sha.AppendData(node.Key.Span);
-            stream.Write(tmp[4..8]);
-            sha.AppendData(tmp[4..8]);
-            stream.Write(node.Value.Span);
-            sha.AppendData(node.Value.Span);
+            SerializeKvp(node, stream, sha);
         }
 
         sha.TryGetHashAndReset(tmp, out _);
         stream.Write(tmp);
-    }
-
-    /// <summary>
-    /// Deserialize a store version from a stream.
-    /// </summary>
-    /// <param name="stream">The stream to deserialize from</param>
-    /// <returns>The new version object.</returns>
-    /// <exception cref="InvalidDataException">Deserialization failed.</exception>
-    public static StoreVersion DeserializeStoreVersion(Stream stream)
-    {
-        if (!TryDeserializeStoreVersion(stream, out var kvs))
-        {
-            throw new InvalidDataException("Invalid KeyValueStore serialization data.");
-        }
-        return kvs;
     }
 
     /// <summary>
@@ -86,31 +64,11 @@ public static class KeyValueStoreSerialization
         var builder = ImmutableAvlTree<Mem, Mem>.Empty.ToBuilder();
         for (int i = 0; i < count; i++)
         {
-            if (!TryReadExactly(stream, tmp[..4]))
+            if (!TryDeserializeKvp(stream, sha, out var node))
             {
                 return false;
             }
-            sha.AppendData(tmp[..4]);
-            int keyLength = BitConverter.ToInt32(tmp);
-            var keyMem = new byte[keyLength];
-            if (!TryReadExactly(stream, keyMem))
-            {
-                return false;
-            }
-            sha.AppendData(keyMem);
-            if (!TryReadExactly(stream, tmp[..4]))
-            {
-                return false;
-            }
-            sha.AppendData(tmp[..4]);
-            int valueLength = BitConverter.ToInt32(tmp);
-            var valueMem = new byte[valueLength];
-            if (!TryReadExactly(stream, valueMem))
-            {
-                return false;
-            }
-            sha.AppendData(valueMem);
-            builder.Add(new(keyMem), new(valueMem));
+            builder.Add(node);
         }
 
         sha.TryGetHashAndReset(tmp, out _);
@@ -125,6 +83,191 @@ public static class KeyValueStoreSerialization
         }
 
         kvs = new(sequence, builder.ToImmutable());
+        return true;
+    }
+
+    /// <summary>
+    /// Serialize a set of change operations.
+    /// </summary>
+    /// <param name="changes">Changes to serialize.</param>
+    /// <param name="stream">The stream to serialize to.</param>
+    public static void SerializeChangeBatch(
+        in ChangeBatch changes,
+        Stream stream)
+    {
+        using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        Span<byte> tmp = stackalloc byte[32];
+
+        BitConverter.TryWriteBytes(tmp[0..8], changes.Sequence);
+        sha.AppendData(tmp[0..8]);
+        stream.Write(tmp[0..8]);
+
+        BitConverter.TryWriteBytes(tmp[0..4], changes.Operations.Length);
+        sha.AppendData(tmp[0..4]);
+        stream.Write(tmp[0..4]);
+
+        foreach (var op in changes.Operations)
+        {
+            SerializeChangeOperation(op, stream, sha);
+        }
+
+        sha.TryGetHashAndReset(tmp, out _);
+        stream.Write(tmp);
+    }
+
+    /// <summary>
+    /// Try to read a set of change operations.
+    /// </summary>
+    /// <param name="stream">The stream to read from.</param>
+    /// <param name="changes">The deserialized change batch.</param>
+    /// <returns><c>true</c> if the change batch could be deserialized.</returns>
+    public static bool TryDeserializeChangeBatch(
+        Stream stream,
+        out ChangeBatch changes)
+    {
+        changes = default;
+
+        using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        Span<byte> tmp = stackalloc byte[32];
+
+        // sequence
+        if (!TryReadExactly(stream, tmp[0..8]))
+        {
+            return false;
+        }
+        var sequence = BitConverter.ToInt64(tmp);
+        sha.AppendData(tmp[0..8]);
+
+        // num ops
+        if (!TryReadExactly(stream, tmp[0..4]))
+        {
+            return false;
+        }
+        var numOps = BitConverter.ToInt32(tmp);
+        sha.AppendData(tmp[0..4]);
+
+        if (numOps < 0)
+        {
+            return false;
+        }
+
+        var ops = new ChangeOperation[numOps];
+        for (int i = 0; i < numOps; i++)
+        {
+            if (!TryDeserializeChangeOperation(stream, sha, out ops[i]))
+            {
+                return false;
+            }
+        }
+
+        if (!TryReadExactly(stream, tmp))
+        {
+            return false;
+        }
+        Span<byte> cmp = stackalloc byte[32];
+        sha.TryGetHashAndReset(cmp, out _);
+        if (!cmp.SequenceEqual(tmp))
+        {
+            return false;
+        }
+
+        changes = new(sequence, ops);
+        return true;
+    }
+
+    private static bool TryDeserializeChangeOperation(
+        Stream stream,
+        IncrementalHash? sha,
+        out ChangeOperation op)
+    {
+        Span<byte> tmp = stackalloc byte[4];
+        if (!TryReadExactly(stream, tmp))
+        {
+            op = default;
+            return false;
+        }
+        sha?.AppendData(tmp);
+        var type = (ChangeOperationType)BitConverter.ToInt32(tmp);
+
+        if (!TryDeserializeKvp(stream, sha, out var kvp))
+        {
+            op = default;
+            return false;
+        }
+
+        op = new()
+        {
+            Type = type,
+            Key = kvp.Key,
+            Value = kvp.Value,
+        };
+
+        return true;
+    }
+
+    private static void SerializeChangeOperation(
+        ChangeOperation op,
+        Stream stream,
+        IncrementalHash? sha)
+    {
+        Span<byte> tmp = stackalloc byte[4];
+        BitConverter.TryWriteBytes(tmp, (int)op.Type);
+        stream.Write(tmp);
+        sha?.AppendData(tmp);
+
+        SerializeKvp(new(op.Key, op.Value), stream, sha);
+    }
+
+    private static void SerializeKvp(
+        KeyValuePair<Mem, Mem> node,
+        Stream stream,
+        IncrementalHash? sha)
+    {
+        Span<byte> tmp = stackalloc byte[4];
+        BitConverter.TryWriteBytes(tmp, node.Key.Length);
+        stream.Write(tmp);
+        sha?.AppendData(tmp);
+        stream.Write(node.Key.Span);
+        sha?.AppendData(node.Key.Span);
+        BitConverter.TryWriteBytes(tmp, node.Value.Length);
+        stream.Write(tmp);
+        sha?.AppendData(tmp);
+        stream.Write(node.Value.Span);
+        sha?.AppendData(node.Value.Span);
+    }
+
+    private static bool TryDeserializeKvp(
+        Stream stream,
+        IncrementalHash? sha,
+        out KeyValuePair<Mem, Mem> node)
+    {
+        Span<byte> tmp = stackalloc byte[4];
+        node = default;
+        if (!TryReadExactly(stream, tmp))
+        {
+            return false;
+        }
+        sha?.AppendData(tmp);
+        int keyLength = BitConverter.ToInt32(tmp);
+        var keyMem = new byte[keyLength];
+        if (!TryReadExactly(stream, keyMem))
+        {
+            return false;
+        }
+        sha?.AppendData(keyMem);
+        if (!TryReadExactly(stream, tmp))
+        {
+            return false;
+        }
+        sha?.AppendData(tmp);
+        int valueLength = BitConverter.ToInt32(tmp);
+        var valueMem = new byte[valueLength];
+        if (!TryReadExactly(stream, valueMem))
+        {
+            return false;
+        }
+        sha?.AppendData(valueMem);
+        node = new(new(keyMem), new(valueMem));
         return true;
     }
 
