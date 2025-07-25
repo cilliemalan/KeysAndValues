@@ -217,7 +217,13 @@ public static class KeyValueStoreExtensions
         }
     }
 
-    internal static ImmutableAvlTree<Mem, Mem> Apply(this ImmutableAvlTree<Mem, Mem> store, ReadOnlySpan<ChangeOperation<Mem, Mem>> operations)
+    /// <summary>
+    /// Apply a set of changes to an <see cref="ImmutableAvlTree{TKey, TValue}"/>.
+    /// </summary>
+    /// <param name="store">The data structure to apply the changes to.</param>
+    /// <param name="operations">The operations to apply</param>
+    /// <returns>A new <see cref="ImmutableAvlTree{TKey, TValue}"/> representing the tree after the changes.</returns>
+    public static ImmutableAvlTree<Mem, Mem> Apply(this ImmutableAvlTree<Mem, Mem> store, ReadOnlySpan<ChangeOperation<Mem, Mem>> operations)
     {
         var builder = store.ToBuilder();
         builder.Apply(operations);
