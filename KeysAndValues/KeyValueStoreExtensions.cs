@@ -278,10 +278,20 @@ public static class KeyValueStoreExtensions
     /// <returns>An enumerable for the items in the store.</returns>
     public static IEnumerable<KeyValuePair<Mem, Mem>> EnumeratePrefix(this KeyValueStore store, Mem prefix)
     {
-        var k = store.Data;
+        return store.Data.EnumeratePrefix(prefix);
+    }
+
+    /// <summary>
+    /// Returns an enumerable that enumerates all items with a key with a given prefix.
+    /// </summary>
+    /// <param name="store">The store.</param>
+    /// <param name="prefix">The prefix.</param>
+    /// <returns>An enumerable for the items in the store.</returns>
+    private static IEnumerable<KeyValuePair<Mem, Mem>> EnumeratePrefix(this ImmutableAvlTree<Mem, Mem> store, Mem prefix)
+    {
         if (prefix.IsEmpty)
         {
-            return k;
+            return store;
         }
 
         var mem = new byte[prefix.Length];
@@ -289,13 +299,13 @@ public static class KeyValueStoreExtensions
         if (Increment(mem))
         {
             var prefixEnd = new Mem(mem);
-            return k.Range(prefix, prefixEnd);
+            return store.Range(prefix, prefixEnd);
         }
         else
         {
             // it's not possible to add an item to the dictionary
             // that has the same prefix but sorts past it.
-            return k.Range(prefix);
+            return store.Range(prefix);
         }
     }
 
