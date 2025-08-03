@@ -8,8 +8,8 @@
 
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<Title>KeysAndValues</Title>
-		<Authors>Eureka</Authors>
-		<Company>Eureka</Company>
+		<Authors>Cillie Malan</Authors>
+		<Company>Cillie Malan</Company>
 		<Description>Simple in-memory key/value store.</Description>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Version>1.0.2</Version>
@@ -36,3 +36,4 @@
 	</ItemGroup>
 
 </Project>
+
