@@ -31,10 +31,10 @@ public class BasicOperationTests
             ["d"] = "4",
         });
         Assert.Equal(4, kvs.Count);
-        Assert.Equal("1", kvs.GetString("a"));
-        Assert.Equal("2", kvs.GetString("b"));
-        Assert.Equal("3", kvs.GetString("c"));
-        Assert.Equal("4", kvs.GetString("d"));
+        Assert.Equal("1", kvs.Get("a"));
+        Assert.Equal("2", kvs.Get("b"));
+        Assert.Equal("3", kvs.Get("c"));
+        Assert.Equal("4", kvs.Get("d"));
         Assert.Equal(1, kvs.Sequence);
     }
 
@@ -48,20 +48,7 @@ public class BasicOperationTests
             ["c"] = "3",
             ["d"] = "4",
         });
-        Assert.Throws<KeyNotFoundException>(() => kvs.GetString("Yo sup"));
-    }
-
-    [Fact]
-    public void GetMemTest()
-    {
-        var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
-        {
-            ["a"] = "1",
-            ["b"] = "2",
-            ["c"] = "3",
-            ["d"] = "4",
-        });
-        Assert.Equal("1", kvs.Get("a"));
+        Assert.Throws<KeyNotFoundException>(() => kvs.Get("Yo sup"));
     }
 
     [Fact]
@@ -96,8 +83,8 @@ public class BasicOperationTests
         kvs.Delete("b");
         kvs.Delete("d");
         Assert.Equal(2, kvs.Count);
-        Assert.Equal("1", kvs.GetString("a"));
-        Assert.Equal("3", kvs.GetString("c"));
+        Assert.Equal("1", kvs.Get("a"));
+        Assert.Equal("3", kvs.Get("c"));
         Assert.Equal(3, kvs.Sequence);
     }
 
@@ -114,9 +101,9 @@ public class BasicOperationTests
         kvs.Delete("b");
         kvs.Delete("b");
         Assert.Equal(3, kvs.Count);
-        Assert.Equal("1", kvs.GetString("a"));
-        Assert.Equal("3", kvs.GetString("c"));
-        Assert.Equal("4", kvs.GetString("d"));
+        Assert.Equal("1", kvs.Get("a"));
+        Assert.Equal("3", kvs.Get("c"));
+        Assert.Equal("4", kvs.Get("d"));
         Assert.Equal(3, kvs.Sequence);
     }
 
@@ -204,8 +191,8 @@ public class BasicOperationTests
         });
         kvs.Delete(["a", "b"]);
         Assert.Equal(2, kvs.Count);
-        Assert.Equal("3", kvs.GetString("c"));
-        Assert.Equal("4", kvs.GetString("d"));
+        Assert.Equal("3", kvs.Get("c"));
+        Assert.Equal("4", kvs.Get("d"));
     }
 
     [Fact]

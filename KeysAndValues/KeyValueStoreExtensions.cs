@@ -6,23 +6,6 @@
 public static class KeyValueStoreExtensions
 {
     /// <summary>
-    /// Get an item from the store as if it was a string key/value store.
-    /// </summary>
-    /// <param name="store">The store.</param>
-    /// <param name="key">The key of the item.</param>
-    /// <returns>The value of the item.</returns>
-    /// <exception cref="KeyNotFoundException">The item was not found.</exception>
-    public static string GetString(this KeyValueStore store, string key)
-    {
-        Mem kmem = new(Encoding.UTF8.GetBytes(key));
-        if (store.TryGet(kmem, out var vmem))
-        {
-            return Encoding.UTF8.GetString(vmem.Span);
-        }
-        throw new KeyNotFoundException($"Key '{key}' not found in the store.");
-    }
-
-    /// <summary>
     /// Get an item from the store.
     /// </summary>
     /// <param name="store">The store</param>
