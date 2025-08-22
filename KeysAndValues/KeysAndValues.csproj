@@ -8,8 +8,8 @@
 
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<Title>KeysAndValues</Title>
-		<Authors>Cillie Malan</Authors>
-		<Company>Cillie Malan</Company>
+		<Authors>Cillié Malan</Authors>
+		<Company>Cillié Malan</Company>
 		<Description>Simple in-memory key/value store.</Description>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Version>0.9.0</Version>
