@@ -16,7 +16,7 @@
 		<DebugType>embedded</DebugType>
 		<IncludeSymbols>True</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
-		<Copyright>Copyright (c) 2025 Cilliemalan</Copyright>
+		<Copyright>Copyright © 2025 Cillié Malan</Copyright>
 		<PackageProjectUrl>https://github.com/cilliemalan/KeysAndValues</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/cilliemalan/KeysAndValues.git</RepositoryUrl>
 	</PropertyGroup>
