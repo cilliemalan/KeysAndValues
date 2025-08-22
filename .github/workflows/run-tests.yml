@@ -8,9 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        dotnet: [ '2.0.x', '3.0.x', '6.0.x', '8.0.x', '9.0.x' ]
 
     steps:
     - name: Checkout Repository
@@ -20,11 +17,8 @@ jobs:
       uses: actions/setup-dotnet@v4
       id: stepid
       with:
-        dotnet-version: ${{ matrix.dotnet }}
-
-    - name: Create temporary global.json
-      run: "echo '{\"sdk\":{\"version\": \"${{ steps.stepid.outputs.dotnet-version }}\"}}' > ./global.json"
- 
+        dotnet-version: '9.0.x' 
+        
     - name: Restore Dependencies
       run: dotnet restore
 
