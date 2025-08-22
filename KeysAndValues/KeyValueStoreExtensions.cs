@@ -174,10 +174,10 @@ public static class KeyValueStoreExtensions
     /// </summary>
     /// <param name="store"></param>
     /// <param name="key"></param>
-    /// <returns>The new store version</returns>
-    public static StoreVersion Delete(this KeyValueStore store, ReadOnlyMemory<byte> key)
+    /// <returns></returns>
+    public static bool ContainsKey(this KeyValueStore store, Mem key)
     {
-        return store.Apply([new() { Type = ChangeOperationType.Set, Key = key, Value = default }]);
+        return store.Snapshot().Data.ContainsKey(key);
     }
 
     internal static void Apply(this ImmutableAvlTree<Mem, Mem>.Builder builder, ReadOnlySpan<ChangeOperation<Mem, Mem>> operations)
