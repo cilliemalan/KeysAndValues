@@ -1,4 +1,6 @@
-﻿namespace KeysAndValues.Tests;
+﻿using System.Text;
+
+namespace KeysAndValues.Tests;
 
 public class BasicOperationTests
 {
@@ -221,6 +223,18 @@ public class BasicOperationTests
 
         kvs.Delete(toDelete);
         Assert.Equal(500, kvs.Count);
+    }
+
+    [Fact]
+    public void SetSpanTest()
+    {
+        var kvs = new KeyValueStore(1, Corpus.Generate(50));
+        Span<byte> kbuffer = stackalloc byte[100];
+        Span<byte> vbuffer = stackalloc byte[100];
+        Encoding.UTF8.TryGetBytes("Hello", kbuffer, out var kbytes);
+        Encoding.UTF8.TryGetBytes("World", vbuffer, out var vbytes);
+        kvs.Set(kbuffer[..kbytes], vbuffer[..vbytes]);
+        Assert.Equal("World", kvs.Get("Hello"));
     }
 
     [Fact]
