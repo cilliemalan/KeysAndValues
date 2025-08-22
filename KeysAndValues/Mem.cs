@@ -30,6 +30,17 @@ public readonly struct Mem : IEquatable<Mem>, IComparable<Mem>
     /// <param name="length">The length.</param>
     public Mem(byte[] data, int index, int length)
     {
+        if (index + length > data.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), "Index out of range");
+        }
+
+        if (data is null || data.Length == 0 || length == 0)
+        {
+            memory = default;
+            return;
+        }
+
         memory = new(data, index, length);
     }
 
@@ -94,7 +105,7 @@ public readonly struct Mem : IEquatable<Mem>, IComparable<Mem>
     {
         var u8data = memory.Span;
         var u32data = MemoryMarshal.Cast<byte, uint>(u8data);
-        
+
         uint l = (uint)memory.Length;
         uint hash = l;
 
@@ -131,6 +142,8 @@ public readonly struct Mem : IEquatable<Mem>, IComparable<Mem>
     /// <inheritdoc />
     public static implicit operator Mem(in ReadOnlyMemory<byte> mem) => new(mem);
 
+    /// <inheritdoc />
+    public static implicit operator Mem(byte[] mem) => new(mem, 0, mem.Length);
     /// <inheritdoc />
     public static implicit operator Mem(string mem) => new(Encoding.UTF8.GetBytes(mem));
     /// <inheritdoc />
