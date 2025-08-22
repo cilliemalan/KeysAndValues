@@ -1,0 +1,40 @@
+name: Create Nuget Package
+
+on:
+  release:
+    types: [published]
+    
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: | 
+            6.0.x
+            8.0.x
+            9.0.x
+          
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Release --no-restore -p:Version=$(ls -1t .git/refs/tags/ | head -n 1 | egrep -o '[0-9.]+')
+
+      - name: Build and Pack
+        run: dotnet pack -c Release --no-build --output nupkg -p:Version=$(ls -1t .git/refs/tags/ | head -n 1 | egrep -o '[0-9.]+')
+        
+      - name: Upload nuget packages as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: ./nupkg/
+
+      - name: Nuget publish
+        run: dotnet nuget push "nupkg/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
