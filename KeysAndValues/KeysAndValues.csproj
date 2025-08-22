@@ -16,6 +16,9 @@
 		<DebugType>embedded</DebugType>
 		<IncludeSymbols>True</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<Copyright>Copyright (c) 2025 Cilliemalan</Copyright>
+		<PackageProjectUrl>https://github.com/cilliemalan/KeysAndValues</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/cilliemalan/KeysAndValues.git</RepositoryUrl>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
@@ -32,8 +35,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="..\LICENSE" Link="LICENSE" Pack="true" PackagePath=""/>
-		<None Include="..\README.md" Link="README.md" Pack="true" PackagePath=""/>
+		<None Include="..\LICENSE" Link="LICENSE" Pack="true" PackagePath="" />
+		<None Include="..\README.md" Link="README.md" Pack="true" PackagePath="" />
 	</ItemGroup>
 
 </Project>
