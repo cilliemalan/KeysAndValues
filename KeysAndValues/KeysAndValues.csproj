@@ -6,7 +6,6 @@
 		<Nullable>enable</Nullable>
 		<LangVersion>latest</LangVersion>
 
-		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<Title>KeysAndValues</Title>
 		<Authors>Cillié Malan</Authors>
 		<Company>Cillié Malan</Company>
@@ -15,6 +14,8 @@
 		<Version>0.9.0</Version>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<DebugType>embedded</DebugType>
+		<IncludeSymbols>True</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
@@ -27,7 +28,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="KeysAndValues.Tests"/>
+		<InternalsVisibleTo Include="KeysAndValues.Tests" />
 	</ItemGroup>
 
 	<ItemGroup>
