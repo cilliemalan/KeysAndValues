@@ -5,8 +5,9 @@ on:
     types: [published]
     
 jobs:
-  test:
+  create-package:
     runs-on: ubuntu-latest
+    name: Create Package
 
     steps:
     
