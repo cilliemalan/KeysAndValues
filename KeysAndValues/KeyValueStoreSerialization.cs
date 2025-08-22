@@ -12,6 +12,16 @@ using System.Security.Cryptography;
 public static class KeyValueStoreSerialization
 {
     /// <summary>
+    /// Serialize a store. This mereley calls <see cref="SerializeStoreVersion"/>.
+    /// </summary>
+    /// <param name="store">The store to serialize.</param>
+    /// <param name="stream">The stream to serialize to.</param>
+    public static void SerializeStore(KeyValueStore store, Stream stream)
+    {
+        SerializeStoreVersion(store.Snapshot(), stream);
+    }
+
+    /// <summary>
     /// Serialize a store version.
     /// </summary>
     /// <param name="version">The version to serialize.</param>
@@ -35,6 +45,25 @@ public static class KeyValueStoreSerialization
 
         sha.TryGetHashAndReset(tmp, out _);
         stream.Write(tmp);
+    }
+
+    /// <summary>
+    /// Try to deserialize a store from a stream. This merely 
+    /// calls <see cref="TryDeserializeStoreVersion"/>.
+    /// </summary>
+    /// <param name="stream">The stream to deserialize from.</param>
+    /// <param name="store">The store to deserialize.</param>
+    /// <returns><c>true</c> if a store version could be deserialized.</returns>
+    public static bool TryDeserializeStore(Stream stream, [MaybeNullWhen(false)] out KeyValueStore store)
+    {
+        if (TryDeserializeStoreVersion(stream, out var ver))
+        {
+            store = new(ver);
+            return true;
+        }
+
+        store = default;
+        return false;
     }
 
     /// <summary>
