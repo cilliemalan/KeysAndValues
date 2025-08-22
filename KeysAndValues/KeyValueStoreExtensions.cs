@@ -46,17 +46,19 @@ public static class KeyValueStoreExtensions
     /// <returns>The new store version</returns>
     public static StoreVersion Delete(this KeyValueStore store, IEnumerable<Mem> keys)
     {
-        int nkeys = 0;
         int nkcap = keys is ICollection<Mem> ckeys ? ckeys.Count : 1;
         ChangeOperation<Mem, Mem>[] ops = ArrayPool<ChangeOperation<Mem, Mem>>.Shared.Rent(nkcap);
         try
         {
+            int nkeys = 0;
             foreach (var k in keys)
             {
                 if (nkeys >= ops.Length)
                 {
+                    var nops = ArrayPool<ChangeOperation<Mem, Mem>>.Shared.Rent(nkeys + nkeys / 2 + 1);
+                    Array.Copy(ops, 0, nops, 0, nkeys);
                     ArrayPool<ChangeOperation<Mem, Mem>>.Shared.Return(ops);
-                    ops = ArrayPool<ChangeOperation<Mem, Mem>>.Shared.Rent(nkeys + nkeys / 2 + 1);
+                    ops = nops;
                 }
 
                 ops[nkeys++] = new()
@@ -133,8 +135,10 @@ public static class KeyValueStoreExtensions
             {
                 if (nkeys >= ops.Length)
                 {
+                    var nops = ArrayPool<ChangeOperation<Mem, Mem>>.Shared.Rent(nkeys + nkeys / 2 + 1);
+                    Array.Copy(ops, 0, nops, 0, nkeys);
                     ArrayPool<ChangeOperation<Mem, Mem>>.Shared.Return(ops);
-                    ops = ArrayPool<ChangeOperation<Mem, Mem>>.Shared.Rent(nkeys + nkeys / 2 + 1);
+                    ops = nops;
                 }
 
                 ops[nkeys++] = new()

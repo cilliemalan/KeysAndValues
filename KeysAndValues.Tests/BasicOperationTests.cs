@@ -196,6 +196,34 @@ public class BasicOperationTests
     }
 
     [Fact]
+    public void DeleteVeryManyRangeTest()
+    {
+        var kvs = new KeyValueStore(1, Corpus.Generate(1000));
+        var toDelete = kvs.Enumerate()
+            .OrderBy(x => Random.Shared.NextDouble())
+            .Take(500)
+            .Select(x => x.Key);
+
+        kvs.Delete(toDelete);
+        Assert.Equal(500, kvs.Count);
+    }
+
+    [Fact]
+    public void DeleteVeryManyWithSomeNotExistingTest()
+    {
+        var kvs = new KeyValueStore(1, Corpus.Generate(1000));
+        var toDelete = kvs.Enumerate()
+            .OrderBy(x => Random.Shared.NextDouble())
+            .Take(500)
+            .Select(x => x.Key)
+            .Concat(Corpus.Generate(500).Keys)
+            .OrderBy(x => Random.Shared.NextDouble());
+
+        kvs.Delete(toDelete);
+        Assert.Equal(500, kvs.Count);
+    }
+
+    [Fact]
     public void GetNonexistantTest()
     {
         var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
