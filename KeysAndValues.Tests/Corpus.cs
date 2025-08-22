@@ -1,8 +1,6 @@
-﻿using System.Diagnostics;
-using System.Diagnostics.Contracts;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 
-namespace KeysAndValues;
+namespace KeysAndValues.Tests;
 
 public static class Corpus
 {

@@ -7,10 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeysAndValues", "KeysAndVal
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeysAndValues.Tests", "KeysAndValues.Tests\KeysAndValues.Tests.csproj", "{62A665DB-29EB-43DF-AEAE-6D497BC00A30}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeysAndValues.Bench", "KeysAndValues.Bench\KeysAndValues.Bench.csproj", "{074694F8-2A47-46A8-A662-19D7F6DD2757}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeysAndValues.Perf", "KeysAndValues.Perf\KeysAndValues.Perf.csproj", "{9FC9D0EB-24CD-4FC1-B570-BE979ACA2734}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
@@ -32,14 +28,6 @@ Global
 		{62A665DB-29EB-43DF-AEAE-6D497BC00A30}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{62A665DB-29EB-43DF-AEAE-6D497BC00A30}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{62A665DB-29EB-43DF-AEAE-6D497BC00A30}.Release|Any CPU.Build.0 = Release|Any CPU
-		{074694F8-2A47-46A8-A662-19D7F6DD2757}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{074694F8-2A47-46A8-A662-19D7F6DD2757}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{074694F8-2A47-46A8-A662-19D7F6DD2757}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{074694F8-2A47-46A8-A662-19D7F6DD2757}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9FC9D0EB-24CD-4FC1-B570-BE979ACA2734}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9FC9D0EB-24CD-4FC1-B570-BE979ACA2734}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9FC9D0EB-24CD-4FC1-B570-BE979ACA2734}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9FC9D0EB-24CD-4FC1-B570-BE979ACA2734}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
