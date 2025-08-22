@@ -80,6 +80,13 @@ public class EnumerationTests
     }
 
     [Fact]
+    public void BadApplyTest()
+    {
+        var store = new KeyValueStore(1, Corpus.Generate(50));
+        Assert.Throws<InvalidOperationException>(() => store.Apply(new ChangeOperation<Mem, Mem>[5]));
+    }
+
+    [Fact]
     public void PrefixEnumerateLimitTest()
     {
         var store = new KeyValueStore();

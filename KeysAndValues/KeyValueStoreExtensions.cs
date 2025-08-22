@@ -199,7 +199,7 @@ public static class KeyValueStoreExtensions
                     builder.Remove(operation.Key);
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(operations));
+                    throw new InvalidOperationException("The change operation type was invalid. Only Add, Set, and Delete are allowed");
             }
         }
     }
