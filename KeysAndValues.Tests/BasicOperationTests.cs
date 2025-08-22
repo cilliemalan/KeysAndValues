@@ -39,6 +39,32 @@ public class BasicOperationTests
     }
 
     [Fact]
+    public void NotFoundGetTest()
+    {
+        var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
+        {
+            ["a"] = "1",
+            ["b"] = "2",
+            ["c"] = "3",
+            ["d"] = "4",
+        });
+        Assert.Throws<KeyNotFoundException>(() => kvs.GetString("Yo sup"));
+    }
+
+    [Fact]
+    public void GetMemTest()
+    {
+        var kvs = new KeyValueStore(1, new Dictionary<Mem, Mem>
+        {
+            ["a"] = "1",
+            ["b"] = "2",
+            ["c"] = "3",
+            ["d"] = "4",
+        });
+        Assert.Equal("1", kvs.Get("a"));
+    }
+
+    [Fact]
     public void BasicSetOverwriteTest()
     {
         var kvs = new KeyValueStore();
