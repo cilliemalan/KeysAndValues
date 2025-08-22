@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
 
 namespace KeysAndValues.Tests;
 
@@ -226,6 +227,19 @@ public class BasicOperationTests
     }
 
     [Fact]
+    public void DeleteMemTest()
+    {
+        var kvs = new KeyValueStore(1, Corpus.Generate(50));
+        ReadOnlyMemory<byte> k = kvs.Enumerate()
+            .OrderBy(x => Random.Shared.NextDouble())
+            .First().Key;
+
+        Assert.True(kvs.ContainsKey(k));
+        kvs.Delete(k);
+        Assert.False(kvs.ContainsKey(k));
+    }
+
+    [Fact]
     public void SetSpanTest()
     {
         var kvs = new KeyValueStore(1, Corpus.Generate(50));
@@ -235,6 +249,55 @@ public class BasicOperationTests
         Encoding.UTF8.TryGetBytes("World", vbuffer, out var vbytes);
         kvs.Set(kbuffer[..kbytes], vbuffer[..vbytes]);
         Assert.Equal("World", kvs.Get("Hello"));
+    }
+
+    [Fact]
+    public void SetMemTest()
+    {
+        var kvs = new KeyValueStore(1, Corpus.Generate(50));
+        Memory<byte> kbuffer = new byte[100];
+        Memory<byte> vbuffer = new byte[100];
+        Encoding.UTF8.TryGetBytes("Hello", kbuffer.Span, out var kbytes);
+        Encoding.UTF8.TryGetBytes("World", vbuffer.Span, out var vbytes);
+        kvs.Set(kbuffer[..kbytes], vbuffer[..vbytes]);
+        Assert.Equal("World", kvs.Get("Hello"));
+    }
+
+    [Fact]
+    public void SetSpanEmptyTest()
+    {
+        var kvs = new KeyValueStore(1, Corpus.Generate(50));
+        Assert.Throws<ArgumentException>(() =>
+        {
+            Span<byte> kbuffer = [];
+            Span<byte> vbuffer = [];
+            kvs.Set(kbuffer, vbuffer);
+        });
+    }
+
+    [Fact]
+    public void SetVeryManyTest()
+    {
+        var kvs = new KeyValueStore(1, Corpus.Generate(1000));
+        var toAdd = Corpus.Generate(100);
+        Mem newValue = "Blah";
+        var toUpdate = kvs.Enumerate()
+            .OrderBy(x => Random.Shared.NextDouble())
+            .Select(x => x.Key)
+            .Take(100);
+        var setsArray = toUpdate.Select(x => new KeyValuePair<Mem, Mem>(x, newValue))
+            .Concat(toAdd.Keys.Select(x => new KeyValuePair<Mem, Mem>(x, newValue)))
+            .ToArray();
+        var sets = setsArray
+            .OrderBy(x => Random.Shared.NextDouble())
+            .AsEnumerable();
+
+        kvs.Set(sets);
+        Assert.Equal(1100, kvs.Count);
+        foreach (var kvp in sets)
+        {
+            Assert.Equal(newValue, kvs.Get(kvp.Key));
+        }
     }
 
     [Fact]
