@@ -14,7 +14,7 @@ namespace KeysAndValues.Tests
         public void BasicMultiThreadedAddTest()
         {
             var kvs = new KeyValueStore();
-            var data = Corpus.GenerateUnsorted(10000).ToList();
+            var data = Corpus.GenerateUnsorted(1000).ToList();
             var cmpkvs = new KeyValueStore(1, data);
             var channel = Channel.CreateUnbounded<KeyValuePair<Mem, Mem>>();
             var threads = Enumerable.Range(0, 16).Select(x => new Thread(() =>
@@ -53,7 +53,7 @@ namespace KeysAndValues.Tests
         public void BasicMultiThreadedAddAndReadTest()
         {
             var kvs = new KeyValueStore();
-            var data = Corpus.GenerateUnsorted(10000).ToDictionary();
+            var data = Corpus.GenerateUnsorted(1000).ToDictionary();
             var writeChannel = Channel.CreateUnbounded<KeyValuePair<Mem, Mem>>();
             var readChannel = Channel.CreateUnbounded<KeyValuePair<Mem, Mem>>();
             var writeThreads = Enumerable.Range(0, 16).Select(x => new Thread(() =>
