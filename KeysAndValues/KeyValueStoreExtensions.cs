@@ -243,9 +243,9 @@ public static class KeyValueStoreExtensions
     /// </summary>
     /// <param name="store">The store.</param>
     /// <param name="fromKeyInclusive">The largest key to include.</param>
-    /// <param name="toKeyExclusive">The smallest key to exclude.</param>
+    /// <param name="toKeyExclusive">The smallest key to exclude. If empty the enumeration will not have an upper bound.</param>
     /// <returns>An enumerable for the items in the store.</returns>
-    public static IEnumerable<KeyValuePair<Mem, Mem>> Enumerate(this KeyValueStore store, Mem fromKeyInclusive, Mem toKeyExclusive)
+    public static IEnumerable<KeyValuePair<Mem, Mem>> Enumerate(this KeyValueStore store, Mem fromKeyInclusive, Mem toKeyExclusive = default)
     {
         var k = store.Data;
         if (toKeyExclusive.IsEmpty)
