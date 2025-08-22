@@ -12,7 +12,7 @@ public static class KeyValueStoreExtensions
     /// <param name="key">The key of the item.</param>
     /// <returns>The value of the item.</returns>
     /// <exception cref="KeyNotFoundException">The item was not found.</exception>
-    public static string GetSring(this KeyValueStore store, string key)
+    public static string GetString(this KeyValueStore store, string key)
     {
         Mem kmem = new(Encoding.UTF8.GetBytes(key));
         if (store.TryGet(kmem, out var vmem))

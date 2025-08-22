@@ -31,10 +31,10 @@ public class BasicOperationTests
             ["d"] = "4",
         });
         Assert.Equal(4, kvs.Count);
-        Assert.Equal("1", kvs.GetSring("a"));
-        Assert.Equal("2", kvs.GetSring("b"));
-        Assert.Equal("3", kvs.GetSring("c"));
-        Assert.Equal("4", kvs.GetSring("d"));
+        Assert.Equal("1", kvs.GetString("a"));
+        Assert.Equal("2", kvs.GetString("b"));
+        Assert.Equal("3", kvs.GetString("c"));
+        Assert.Equal("4", kvs.GetString("d"));
         Assert.Equal(1, kvs.Sequence);
     }
 
@@ -70,8 +70,8 @@ public class BasicOperationTests
         kvs.Delete("b");
         kvs.Delete("d");
         Assert.Equal(2, kvs.Count);
-        Assert.Equal("1", kvs.GetSring("a"));
-        Assert.Equal("3", kvs.GetSring("c"));
+        Assert.Equal("1", kvs.GetString("a"));
+        Assert.Equal("3", kvs.GetString("c"));
         Assert.Equal(3, kvs.Sequence);
     }
 
@@ -88,9 +88,9 @@ public class BasicOperationTests
         kvs.Delete("b");
         kvs.Delete("b");
         Assert.Equal(3, kvs.Count);
-        Assert.Equal("1", kvs.GetSring("a"));
-        Assert.Equal("3", kvs.GetSring("c"));
-        Assert.Equal("4", kvs.GetSring("d"));
+        Assert.Equal("1", kvs.GetString("a"));
+        Assert.Equal("3", kvs.GetString("c"));
+        Assert.Equal("4", kvs.GetString("d"));
         Assert.Equal(3, kvs.Sequence);
     }
 
@@ -178,8 +178,8 @@ public class BasicOperationTests
         });
         kvs.Delete(["a", "b"]);
         Assert.Equal(2, kvs.Count);
-        Assert.Equal("3", kvs.GetSring("c"));
-        Assert.Equal("4", kvs.GetSring("d"));
+        Assert.Equal("3", kvs.GetString("c"));
+        Assert.Equal("4", kvs.GetString("d"));
     }
 
     [Fact]
